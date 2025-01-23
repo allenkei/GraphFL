@@ -2,7 +2,7 @@ import gensim.downloader as api
 import numpy as np
 
 model = api.load("glove-wiki-gigaword-100")
-data = np.load('data/adjnoun_data.npz', allow_pickle=True) # from R
+data = np.load('data/adjnoun_raw.npz', allow_pickle=True) # from R
 
 adj_matrix = data['adj'] # the adjacency matrix
 y_data = data['labels'] # the actual word
