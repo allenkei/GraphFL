@@ -4,7 +4,6 @@ library(reticulate)
 np <- import("numpy")
 data(adjnoun)
 
-
 adj <- as.matrix(as_adjacency_matrix(adjnoun))
 node_labels <- V(adjnoun)$name
 node_classes <- V(adjnoun)$value 
