@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 
-data_name = "s2"
+data_name = "s1"
 num_seq = 10
 num_nodes = 100 # n
 num_communities = 3
