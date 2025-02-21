@@ -6,7 +6,7 @@ import numpy as np
 import random
 import os
 import datetime
-from CD_evaluation import evaluation_gamma
+from CD_evaluation import evaluation_gamma, data_split
 torch.set_printoptions(precision=5)
 
 
@@ -23,26 +23,27 @@ torch.cuda.manual_seed(seed)
 def parse_args():
   parser = argparse.ArgumentParser()
 
-  parser.add_argument('--latent_dim', default=10, type=int) 
-  parser.add_argument('--output_dim', default=15)
-  parser.add_argument('--num_samples', default=400)
-  parser.add_argument('--langevin_K', default=40)
-  parser.add_argument('--langevin_s', default=0.5) 
-  parser.add_argument('--penalties', default=[0.25, 0.5, 1, 1.5], type=int)
+  parser.add_argument('--latent_dim', default=10, type=int)
+  parser.add_argument('--output_dim', default=10)
+  parser.add_argument('--num_samples', default=500)
+  parser.add_argument('--langevin_K', default=50)
+  parser.add_argument('--langevin_s', default=0.4) 
+  parser.add_argument('--penalties', default=[0.25, 0.5, 1, 2], type=int)
   #parser.add_argument('--gamma', default=10)
   
   parser.add_argument('--epoch', default=50) # ADMM iteration
-  parser.add_argument('--decoder_iteration', default=100)
-  parser.add_argument('--nu_iteration', default=100)
+  parser.add_argument('--decoder_iteration', default=20)
+  parser.add_argument('--nu_iteration', default=20)
   parser.add_argument('--decoder_lr', default=0.01)
   parser.add_argument('--decoder_thr', default=0.0001)
   #parser.add_argument('--iter_thr', default=5)
 
   parser.add_argument('--use_data', default='s1') 
-  parser.add_argument('--num_node', default=100, type=int)
+  parser.add_argument('--num_node', default=150, type=int)
   parser.add_argument('--num_T', default=30, type=int) # number of time points
   parser.add_argument('--hidden_dim', default=32)
   parser.add_argument('--num_seq', default=10)
+
   parser.add_argument('--gamma_num_samples', default=500)
   parser.add_argument('--data_dir', default='./data/')
   parser.add_argument('-f', required=False)
@@ -71,13 +72,16 @@ if args.use_data == 's1':
   print('[INFO] num_node = {}'.format(args.num_node))
   data = np.load(args.data_dir +'data_s1.npz')
   output_dir = os.path.join(f"result/s1") # _{timestamp}
+elif args.use_data == 's2':
+  print('[INFO] num_node = {}'.format(args.num_node))
+  data = np.load(args.data_dir +'data_s2.npz')
+  output_dir = os.path.join(f"result/s2")
   
   
 os.makedirs(output_dir, exist_ok=True)
-
-
-def count_parameters(model):
-  return sum(p.numel() for p in model.parameters() if p.requires_grad)
+with open(output_dir+"/args.txt", 'w') as f:
+    for arg, value in vars(args).items():
+        f.write(f"{arg}: {value}\n")
 
 def init_weights(m):
   for name, param in m.named_parameters():
@@ -97,21 +101,23 @@ class CD_temp(nn.Module):
     self.T = args.num_T
     self.RNN = nn.RNN(args.latent_dim, args.hidden_dim, batch_first=True)
     self.fc = nn.Linear(args.hidden_dim, args.output_dim)
-
+        
   def forward(self, z):
     # z: nm by d
 
     z = z.unsqueeze(1).repeat(1, self.T, 1) # nm by T by d
     output, _ = self.RNN(z) # nm by T by hidden_dim
     output = self.fc(output) # nm by T by p
+
     return output
+
     
   def infer_z(self, z, y_repeat, mu_repeat):
     # z: nm by d
     # y_repeat: nm by T by p (repeated by m), with y_data: n by T by p
     # mu_repeat: nm by d (repeated by m)
 
-    criterion = nn.MSELoss(reduction='sum') # negative log-likelihood for Normal ???
+    criterion = nn.MSELoss(reduction='sum') # negative log-likelihood for Normal
     for k in range(args.langevin_K):
       z = z.detach().clone()
       z.requires_grad = True
@@ -129,33 +135,38 @@ class CD_temp(nn.Module):
     z = z.detach().clone() # nm by d
     return z
 
-  def cal_loglik(self, mu_repeat, y_repeat):
-    # mu_repeat: nm by d
-    # y_repeat: # nm by T by p
+  
+  
+  def cal_loglik(self, mu, y):
+    # mu: n by d
+    # y: # n by T by p
+    mu = mu.to(device)
+    y = y.to(device)
 
     with torch.no_grad():
 
-      z = mu_repeat + torch.randn(args.num_samples * args.num_node, self.d).to(device) 
-      z = z.unsqueeze(1).repeat(1, self.T, 1)  # nm by T by d
+      z = mu + torch.randn_like(mu).to(device) # n by d
+      z = z.unsqueeze(1).repeat(1, self.T, 1)  # n by T by d
       output, _ = self.RNN(z)
-      output = self.fc(output)  # nm by T by p
+      output = self.fc(output)  # n by T by p
 
       log_lik = 0.0
       for t in range(self.T):
 
-        y_t = y_repeat[:, t, :] # nm by p
-        mean_for_y_t = output[:, t, :] # nm by p
+        y_t = y[:, t, :] # n by p
+        mean_for_y_t = output[:, t, :] # n by p
         
-        log_prob = -0.5 * torch.sum((y_t - mean_for_y_t)**2, dim=1)  # Sum over p features
-        log_norm = -0.5 * y_repeat.shape[2] * torch.log(torch.tensor(2 * torch.pi).to(device))
-        log_lik += torch.sum(log_prob + log_norm)  # Sum over nm samples
+        log_prob = -0.5 * torch.sum((y_t - mean_for_y_t)**2, dim=1)
+        log_norm = -0.5 * y.shape[2] * torch.log(torch.tensor(2 * torch.pi).to(device))
+        log_lik += torch.sum(log_prob + log_norm) 
     
       return log_lik
-        
+  
 
 
 
-def learn_one_seq_penalty(args, y_data, source_nodes, target_nodes, node_degrees, adj_matrix, seq_iter, pen_iter):
+def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
+    source_nodes, target_nodes, node_degrees, adj_matrix, seq_iter, pen_iter, CV):
   
   n = args.num_node
   m = args.num_samples
@@ -163,12 +174,6 @@ def learn_one_seq_penalty(args, y_data, source_nodes, target_nodes, node_degrees
   d = args.latent_dim
   penalty = args.penalties[pen_iter] # lambda
   gamma = args.penalties[pen_iter] # args.gamma
-
-  early_stopping = False
-  stopping_count = 0 # for ADMM
-  old_loglik = -float('inf')
-  loglik_holder = []
-  decoder_loss_holder = []
 
   
   # initialize mu, nu, w, with zeros
@@ -190,7 +195,6 @@ def learn_one_seq_penalty(args, y_data, source_nodes, target_nodes, node_degrees
   model.apply(init_weights)
   optimizer = torch.optim.Adam(model.parameters(), lr=args.decoder_lr)
   criterion = nn.MSELoss(reduction='sum') # loglik sum over i, but expectation over m, so later divided by m
-  NN_params = count_parameters(model)
 
   for learn_iter in range(args.epoch):
 
@@ -213,19 +217,17 @@ def learn_one_seq_penalty(args, y_data, source_nodes, target_nodes, node_degrees
       y_pred = model(sampled_z_all) # nm by T by p
       loss = criterion(y_pred, y_repeat) / m 
       loss.backward()
-      nn.utils.clip_grad_norm_(model.parameters(), 1)
+      nn.utils.clip_grad_norm_(model.parameters(),1)
       optimizer.step()
 
-      # Save the loss at the last decoder iteration
-      if decoder_iter == args.decoder_iteration - 1:
-        decoder_loss_holder.append(loss.item())
-
+    
       # early stopping for decoder
       loss_relative_diff = abs( (loss.item() - inner_loss) / inner_loss )
       inner_loss = loss.item()
       if loss_relative_diff < args.decoder_thr: 
         #print('[INFO] decoder early stopping')
         break
+    
 
     ################
     # UPDATE PRIOR # 
@@ -250,7 +252,6 @@ def learn_one_seq_penalty(args, y_data, source_nodes, target_nodes, node_degrees
 
     mu = mu_new.detach().clone()
 
-    
     #############
     # UPDATE NU # 
     #############
@@ -261,7 +262,7 @@ def learn_one_seq_penalty(args, y_data, source_nodes, target_nodes, node_degrees
       s_ij_norm = torch.norm(s_ij, dim=1, keepdim=True)  # Shape: (E, 1)
       scaling_factor = 1 - (penalty / (gamma * s_ij_norm))
       scaling_factor = torch.clamp(scaling_factor, min=0.0)  # ReLU: max(0,x)
-      nu = scaling_factor * s_ij # CHECK CONVERGENCE
+      nu = scaling_factor * s_ij
       nu = nu.detach().clone()
 
     ############
@@ -278,69 +279,56 @@ def learn_one_seq_penalty(args, y_data, source_nodes, target_nodes, node_degrees
     primal_residual = torch.sqrt(torch.mean(torch.square(mu[source_nodes] - mu[target_nodes] - nu)))
     dual_residual = torch.sqrt(torch.mean(torch.square(nu - nu_old)))
 
+    
     mu_old = mu.detach().clone()
     nu_old = nu.detach().clone()
 
-    #if (learn_iter+1) > 10:
-      
-    
-    '''
-    # Early Stopping ADMM
-    if gamma > 100:
-      print("[INFO] ADMM early stopping")
-      break
-    '''
     
     if (learn_iter+1) % 10 == 0:
-      print('\nlearning iter (seq={},[penalty={}]) ='.format(seq_iter, penalty), learn_iter+1, 'of', args.epoch)
-      print('\tprimal residual =', primal_residual)
-      print('\tdual residual =', dual_residual)
-
+      print('\n\tlearning iter (seq={},[penalty={},CV={}]) ='.format(seq_iter, penalty, CV), learn_iter+1, 'of', args.epoch)
+      print('\t\tprimal residual =', primal_residual)
+      print('\t\tdual residual =', dual_residual)
 
       if primal_residual > 10.0 * dual_residual:
         gamma *= 2.0
         w *= 0.5
-        print('\n[INFO] gamma increased to', gamma)
+        #print('\n[INFO] gamma increased to', gamma)
       elif dual_residual > 10.0 * primal_residual:
         gamma *= 0.5
         w *= 2.0
-        print('\n[INFO] gamma decreased to', gamma)
+        #print('\n[INFO] gamma decreased to', gamma)
 
 
-      '''
-      # Plotting the loss
-      plt.plot(range(len(decoder_loss_holder)), decoder_loss_holder, marker='o', label='Last Loss per Learning Iteration')
-      plt.xlabel('Learning Iteration')
-      plt.ylabel('Loss')
-      plt.title('Loss at Last Decoder Iteration')
-      plt.savefig( output_dir + '/loss_seq{}_pen{}'.format(seq_iter,pen_iter) + '.png' ) 
-      plt.close()
-      '''
 
       with torch.no_grad():
         # second row - first row
         delta_mu = torch.norm(torch.diff(mu, dim=0), p=2, dim=1)
         delta_mu = delta_mu.cpu().detach().numpy() # numpy for plot
 
+        if CV:
+          fig_name = '/CV_delta_mu_seq{}_pen{}_learn{}'.format(seq_iter,pen_iter,learn_iter+1)
+        else:
+          fig_name = '/FINAL_delta_mu_seq{}_pen{}_learn{}'.format(seq_iter,pen_iter,learn_iter+1)
+
+
         plt.plot(delta_mu)
-        plt.savefig( output_dir + '/delta_mu_seq{}_pen{}_learn{}'.format(seq_iter,pen_iter,learn_iter+1) + '.png' ) 
+        plt.savefig( output_dir + fig_name + '.png' ) 
         plt.close()
   
 
+  if CV:
+    mu_removed = mu[removed_nodes]
+    log_lik = model.cal_loglik(mu_removed, removed_y_data)
+    return log_lik
+  else:
+    torch.save(mu, os.path.join(output_dir, 'mu_par_seq{}_pen{}.pt'.format(seq_iter, pen_iter)) )
+    clusters, NMI, ARI, ACC = evaluation_gamma(mu, args, pen_iter, node_degrees, adj_matrix, labels)
 
-
-  log_lik = model.cal_loglik(mu_repeat, y_repeat)
-  
-  clusters, Q = evaluation_gamma(mu, args, pen_iter, node_degrees, adj_matrix)
-
-  # save here for a specific sequence and penalty
-  with open(output_dir + '/clusters_seq{}_pen{}.txt'.format(seq_iter,pen_iter), 'w') as f:
-    for cluster in clusters:
-        f.write(' '.join(map(str, cluster)) + '\n')
-  
-  
-
-  return Q
+    # save here for a specific sequence and penalty
+    with open(output_dir + '/clusters_seq{}_pen{}.txt'.format(seq_iter,pen_iter), 'w') as f:
+      for cluster in clusters:
+          f.write(' '.join(map(str, cluster)) + '\n')
+    return NMI, ARI, ACC
   
 
 
@@ -351,9 +339,13 @@ def learn_one_seq_penalty(args, y_data, source_nodes, target_nodes, node_degrees
 ######################
 
 
-for seq_iter in range(2,args.num_seq):
 
-  if seq_iter == 3: break
+output_holder = torch.zeros(args.num_seq, 3) # NMI, ARI, ACC
+
+
+for seq_iter in range(0,args.num_seq):
+
+  #if seq_iter == 3: break
 
   adj_matrix = data['adj_matrices'][seq_iter]
   labels = data['labels'][seq_iter]
@@ -367,16 +359,49 @@ for seq_iter in range(2,args.num_seq):
   node_degrees = torch.zeros(adj_matrix.shape[0], dtype=torch.float32).to(device)
   node_degrees.scatter_add_(0, edge_index[0], torch.ones(args.num_edge).to(device))
 
+
+  new_y_data, removed_y_data, removed_nodes = data_split(args, y_data, edge_index, split_at=10)
+  
+
+  print('\n')
+  print('[INFO] new_y_data.shape:',new_y_data.shape)
+  print('[IFNO] removed_y_data.shape:', removed_y_data.shape)
+  print('[INFO] removed_nodes:', removed_nodes)
   print("[INFO] node_degrees.shape:", node_degrees.shape)
   print('[INFO] edge_index loaded with shape:', edge_index.shape)
   #print("[INFO] source_nodes.shape, target_nodes.shape:", source_nodes.shape, target_nodes.shape)
 
   
-  output_holder = []
+  output_seq = []
   for pen_iter in range(len(args.penalties)):
-    BIC_seq = learn_one_seq_penalty(args, y_data, source_nodes, target_nodes, node_degrees, adj_matrix, seq_iter, pen_iter=pen_iter)
-    output_holder.append(BIC_seq)
+    loglik_seq = learn_one_seq_penalty(args, new_y_data, removed_y_data, removed_nodes, labels,\
+              source_nodes, target_nodes, node_degrees, adj_matrix, 
+              seq_iter, pen_iter=pen_iter, CV=True)
+    output_seq.append(loglik_seq.item())
+    print('[INFO] log_lik:', output_seq)
 
-  print(output_holder)
-  
+  best_index = output_seq.index(max(output_seq))
+  print("\nbest_index:" , best_index)
+  print(output_seq)
+
+  # use full data, None for removed_y_data and removed_nodes 
+  NMI, ARI, ACC = learn_one_seq_penalty(args, y_data, None, None, labels,\
+              source_nodes, target_nodes, node_degrees, adj_matrix, 
+              seq_iter, pen_iter=best_index, CV=False)
+
+
+  output_holder[seq_iter,:] = torch.tensor((NMI,ARI,ACC))
+  print('[INFO] result for seq_iter = {}:\n'.format(seq_iter), output_holder[seq_iter,:])
+  torch.save(output_holder, os.path.join(output_dir, 'result_table_seq{}.pt'.format(seq_iter)) ) # have previous results
+
+
+print('output_holder:\n', output_holder)
+torch.save(output_holder, os.path.join(output_dir, 'result_table_all.pt') ) # save all results in the last
+
+# print result for table
+print('mean perforamnce:\n', np.mean(output_holder.cpu().numpy(),axis=0))
+print('std perforamnce:\n', np.std(output_holder.cpu().numpy(),axis=0)) 
+
+
+
 
