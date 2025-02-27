@@ -4,18 +4,44 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
+import argparse
+import random
 
-data_name = "s2"
-num_seq = 10
-num_nodes = 150 # n
-num_communities = 3
-community_sizes = [50,50,50] 
-dim_z = 10
-dim_y = 10 # Number of features at each time point
-hidden_dim = 16
-T = 30 # Number of time points
-edge_prob_intra = 0.35  # within community
-edge_prob_inter = 0.15  # between communities
+
+seed = 123
+random.seed(seed)
+np.random.seed(seed)
+torch.manual_seed(seed)
+torch.cuda.manual_seed(seed)
+
+
+
+def parse_args():
+  parser = argparse.ArgumentParser()
+  
+  parser.add_argument('--data_name', default="s2")
+  parser.add_argument('--num_seq', default=15)
+  parser.add_argument('--num_nodes', default=150, type=int)
+  parser.add_argument('--num_communities', default=3)
+  parser.add_argument('--cov_rho', default=0.1)
+  parser.add_argument('--dim_z', default=10)
+  parser.add_argument('--dim_y', default=10)
+  parser.add_argument('--hidden_dim', default=16)
+  parser.add_argument('--T', default=30)
+  parser.add_argument('--edge_prob_intra', default=0.35)
+  parser.add_argument('--edge_prob_inter', default=0.15)
+  
+  return parser.parse_args()
+
+
+
+args = parse_args()
+
+
+if args.num_nodes == 150:
+  community_sizes = [60,50,40] 
+elif args.num_nodes == 300:
+  community_sizes = [120,100,80] 
 
 
 
@@ -39,9 +65,9 @@ class RNN(nn.Module):
   def init_rnn_weights(self, rnn):
     for name, param in rnn.named_parameters():
       if 'weight' in name:
-        nn.init.uniform_(param, -0.25, 0.25)
+        nn.init.uniform_(param, -0.1, 0.1)
       elif 'bias' in name:
-        nn.init.uniform_(param, -0.25, 0.25)
+        nn.init.uniform_(param, -0.1, 0.1)
 
 
 
@@ -53,17 +79,17 @@ y_list = []
 
 
 means = [
-        -5.0 * torch.ones(dim_z), # Community 1
-        0.0 * torch.ones(dim_z), # Community 2
-        5.0 * torch.ones(dim_z) # Community 3
+        -5.0 * torch.ones(args.dim_z), # Community 1
+        0.0 * torch.ones(args.dim_z), # Community 2
+        5.0 * torch.ones(args.dim_z) # Community 3
     ]
 
-covariance_matrix = torch.eye(dim_z) * 0.1
+covariance_matrix = torch.eye(args.dim_z) * args.cov_rho
 
 
-for idx in range(num_seq):
+for idx in range(args.num_seq):
 
-    model = RNN(input_dim=dim_z, hidden_dim=hidden_dim, output_dim=dim_y)
+    model = RNN(input_dim=args.dim_z, hidden_dim=args.hidden_dim, output_dim=args.dim_y)
     model.init_rnn_weights(model.rnn)
 
     labels = np.concatenate([[i] * size for i, size in enumerate(community_sizes)])
@@ -78,18 +104,18 @@ for idx in range(num_seq):
       z_samples.append(community_samples)
 
     z_samples_tensor = torch.cat(z_samples, dim=0)
-    y_data = model(z_samples_tensor, T).detach().numpy()  # num_nodes by T by dim_y
+    y_data = model(z_samples_tensor, args.T).detach().numpy()  # num_nodes by T by dim_y
 
 
     graph = nx.Graph()
-    graph.add_nodes_from(range(num_nodes))
+    graph.add_nodes_from(range(args.num_nodes))
 
-    for i in range(num_nodes):
-      for j in range(i + 1, num_nodes):
+    for i in range(args.num_nodes):
+      for j in range(i + 1, args.num_nodes):
           if labels[i] == labels[j]:  
-              prob = edge_prob_intra
+              prob = args.edge_prob_intra
           else:                       
-              prob = edge_prob_inter
+              prob = args.edge_prob_inter
           if np.random.binomial(1, prob):  # Sample from Bernoulli distribution
               graph.add_edge(i, j)
 
@@ -106,13 +132,14 @@ adj_matrices = np.array(adj_matrices)
 labels_list = np.array(labels_list)
 y_list = np.array(y_list)
 
+print("[INFO] data:", args.data_name)
 print("[INFO] adj_matrices.shape:",adj_matrices.shape)
 print("[INFO] labels_list.shape:",labels_list.shape)
 print("[INFO] y_list.shape:",y_list.shape)
 
 # Save to an .npz file
-np.savez('data/data_{}.npz'.format(data_name), adj_matrices=adj_matrices, labels=labels_list, y=y_list)
-print('[INFO] data saved')
+np.savez('data/data_{}_n{}.npz'.format(args.data_name,args.num_nodes), adj_matrices=adj_matrices, labels=labels_list, y=y_list)
+print('[INFO] data saved\n')
 
 
 

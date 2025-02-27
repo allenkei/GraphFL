@@ -1,8 +1,9 @@
 import torch
 import numpy as np
+from collections import defaultdict
 import scipy.stats as st
 import matplotlib.pyplot as plt
-from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score, accuracy_score
+from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score, accuracy_score, homogeneity_score, completeness_score, confusion_matrix
 
 
 def evaluation_gamma(mu, args, pen_iter, node_degrees, adj_matrix, labels):
@@ -57,70 +58,104 @@ def evaluation_gamma(mu, args, pen_iter, node_degrees, adj_matrix, labels):
       clusters_mu_list.append([node_i_mu])
 
 
-  print("[INFO] clusters:", clusters)
-
-  #####################
-  # CLUSTER ALIGNMENT #
-  #####################
-  # BEGIN
-  def match_clusters_by_overlap(true_labels, pred_clusters):
-
-    unique_true = np.unique(true_labels) # true cluster labels i.e. [0,1,2]
-    true_clusters = {label: set(np.where(true_labels == label)[0]) for label in unique_true}
-
-    pred_labels = np.empty_like(true_labels)
-    pred_clusters_dict = {i: set(cluster) for i, cluster in enumerate(pred_clusters)}
-
-    mapping = {}
-    used_true_clusters = set()
-
-    for pred_id, pred_nodes in pred_clusters_dict.items():
-      # matching by max the overlaping
-      best_match = max(true_clusters, key=lambda true_id: len(pred_nodes & true_clusters[true_id]))
-      mapping[pred_id] = best_match
-      used_true_clusters.add(mapping[pred_id])
-
-    # Relabel predicted clusters according to mapping
-    for pred_id, pred_nodes in pred_clusters_dict.items():
-      for node in pred_nodes:
-        pred_labels[node] = mapping[pred_id]
-
-    return pred_labels
-  # END
-
-
-
-  '''
-  # Modularity score
-  Q = 0.0
-  for community in clusters:
-    for i in community:
-      for j in community:
-        if i != j:
-          A_ij = adj_matrix[i, j]
-          k_i = node_degrees[i]
-          k_j = node_degrees[j]
-          Q += A_ij - (k_i * k_j) / (2 * E)
-  Q /= (2 * E)
-  '''
+  
 
 
 
 
+  ###########################################
+  #  FUNCTIONS DEFINED WITHIN THIS FUNCTION #
+  ###########################################
 
-  # Align predicted labels
-  aligned_pred_labels = match_clusters_by_overlap(labels, clusters)
+  def assign_predicted_clusters(true_labels, predicted_clusters):
+
+    true_dict = defaultdict(list)
+    for idx, label in enumerate(true_labels):
+        true_dict[label].append(idx)
+    true_dict = dict(true_dict)
+
+    assigned_labels = {} 
+    predicted_dict = {}
+
+    used_labels = set()
+    new_label = max(true_dict.keys()) + 1  
+
+    for i, cluster in enumerate(predicted_clusters):
+
+        overlap_count = {label: len(set(cluster) & set(indices)) for label, indices in true_dict.items()}
+        best_label = max(overlap_count, key=overlap_count.get)
+        
+        if overlap_count[best_label] > 0 and best_label not in used_labels:
+            assigned_labels[i] = best_label
+            used_labels.add(best_label)
+        else:
+            assigned_labels[i] = new_label
+            new_label += 1 
+
+    for i, cluster in enumerate(predicted_clusters):
+        label = assigned_labels[i]
+        predicted_dict[label] = cluster
+
+    return true_dict, predicted_dict
+
+  def dict_to_label_list(cluster_dict):
+
+    max_index = max(max(indices) for indices in cluster_dict.values())  
+    label_list = [-1] * (max_index + 1)
+
+    for label, indices in cluster_dict.items():
+        for idx in indices:
+            label_list[idx] = label
+
+    return label_list
+
+  # label: list of label [0,0,0,1,1,1,2,2,2]
+  # clusters: list of cluster by node index [[0,1,2],[3,4,5],[6,7,8]]
+  true_dict, pred_dict = assign_predicted_clusters(labels, clusters) # dictionary
+  true_label_list = dict_to_label_list(true_dict) # list of label
+  pred_label_list = dict_to_label_list(pred_dict) # list of label
+
+
+
+
+
+
+  
+
+  # CLUSTER PURITY
+  def cluster_purity(y_true, y_pred):
+    cm = confusion_matrix(y_true, y_pred)
+    purity = np.sum(np.amax(cm, axis=1)) / np.sum(cm)
+    return purity
+
+
+
+
+  ######################
+  # EVALUATION METRICS #
+  ######################
+  print("[INFO] number of clusters:", len(clusters))
+  print("[INFO] aligned labels:", pred_label_list)
+  print("[INFO] true labels:", true_label_list)
 
   # Compute Evaluation Metrics
-  NMI = normalized_mutual_info_score(labels, aligned_pred_labels)
-  ARI = adjusted_rand_score(labels, aligned_pred_labels)
-  ACC = accuracy_score(labels, aligned_pred_labels)
+  NMI = normalized_mutual_info_score(true_label_list, pred_label_list)
+  ARI = adjusted_rand_score(true_label_list, pred_label_list)
+  ACC = accuracy_score(true_label_list, pred_label_list)
+  HOM = homogeneity_score(true_label_list, pred_label_list)
+  COM = completeness_score(true_label_list, pred_label_list)
+  PUR = cluster_purity(true_label_list, pred_label_list)
 
+  
   print(f"[INFO] NMI Score: {NMI:.4f}")
   print(f"[INFO] ARI Score: {ARI:.4f}")
   print(f"[INFO] Clustering Accuracy: {ACC:.4f}")
+  print(f"[INFO] Homogeneity: {HOM:.4f}")
+  print(f"[INFO] Completeness: {COM:.4f}")
+  print(f"[INFO] Cluster Purity: {PUR:.4f}")
+  
 
-  return clusters, NMI, ARI, ACC
+  return clusters, NMI, ARI, ACC, HOM, COM, PUR
 
 
 

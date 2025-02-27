@@ -24,17 +24,17 @@ def parse_args():
   parser = argparse.ArgumentParser()
 
   parser.add_argument('--latent_dim', default=10, type=int)
-  parser.add_argument('--output_dim', default=10)
+  parser.add_argument('--output_dim', default=10, type=int)
   parser.add_argument('--num_samples', default=500)
   parser.add_argument('--langevin_K', default=50)
   parser.add_argument('--langevin_s', default=0.4) 
-  parser.add_argument('--penalties', default=[0.25, 0.5, 1, 2], type=int)
+  parser.add_argument('--penalties', default=[0.1, 0.25, 0.5, 0.75]) # [0.1, 0.25, 0.5, 0.75]
   #parser.add_argument('--gamma', default=10)
   
   parser.add_argument('--epoch', default=50) # ADMM iteration
   parser.add_argument('--decoder_iteration', default=20)
   parser.add_argument('--nu_iteration', default=20)
-  parser.add_argument('--decoder_lr', default=0.01)
+  parser.add_argument('--decoder_lr', default=0.005)
   parser.add_argument('--decoder_thr', default=0.0001)
   #parser.add_argument('--iter_thr', default=5)
 
@@ -74,9 +74,14 @@ if args.use_data == 's1':
   output_dir = os.path.join(f"result/s1") # _{timestamp}
 elif args.use_data == 's2':
   print('[INFO] num_node = {}'.format(args.num_node))
-  data = np.load(args.data_dir +'data_s2.npz')
-  output_dir = os.path.join(f"result/s2")
-  
+  data = np.load(args.data_dir +'data_s2_n{}.npz'.format(args.num_node))
+  output_dir = os.path.join("result/s2_n{}".format(args.num_node))
+  remove_ratio = 0.05
+elif args.use_data == 's3':
+  print('[INFO] num_node = {}'.format(args.num_node))
+  data = np.load(args.data_dir +'data_s3_n{}.npz'.format(args.num_node))
+  output_dir = os.path.join("result/s3_n{}".format(args.num_node))
+  remove_ratio = 0.05
   
 os.makedirs(output_dir, exist_ok=True)
 with open(output_dir+"/args.txt", 'w') as f:
@@ -167,7 +172,7 @@ class CD_temp(nn.Module):
 
 def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
     source_nodes, target_nodes, node_degrees, adj_matrix, seq_iter, pen_iter, CV):
-  
+
   n = args.num_node
   m = args.num_samples
   E = args.num_edge
@@ -227,7 +232,6 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
       if loss_relative_diff < args.decoder_thr: 
         #print('[INFO] decoder early stopping')
         break
-    
 
     ################
     # UPDATE PRIOR # 
@@ -289,6 +293,7 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
       print('\t\tprimal residual =', primal_residual)
       print('\t\tdual residual =', dual_residual)
 
+      
       if primal_residual > 10.0 * dual_residual:
         gamma *= 2.0
         w *= 0.5
@@ -297,7 +302,7 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
         gamma *= 0.5
         w *= 2.0
         #print('\n[INFO] gamma decreased to', gamma)
-
+      
 
 
       with torch.no_grad():
@@ -322,13 +327,13 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
     return log_lik
   else:
     torch.save(mu, os.path.join(output_dir, 'mu_par_seq{}_pen{}.pt'.format(seq_iter, pen_iter)) )
-    clusters, NMI, ARI, ACC = evaluation_gamma(mu, args, pen_iter, node_degrees, adj_matrix, labels)
+    clusters, NMI, ARI, ACC, HOM, COM, PUR= evaluation_gamma(mu, args, pen_iter, node_degrees, adj_matrix, labels)
 
     # save here for a specific sequence and penalty
     with open(output_dir + '/clusters_seq{}_pen{}.txt'.format(seq_iter,pen_iter), 'w') as f:
       for cluster in clusters:
           f.write(' '.join(map(str, cluster)) + '\n')
-    return NMI, ARI, ACC
+    return NMI, ARI, ACC, HOM, COM, PUR
   
 
 
@@ -340,12 +345,14 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
 
 
 
-output_holder = torch.zeros(args.num_seq, 3) # NMI, ARI, ACC
+output_holder = torch.zeros(args.num_seq, 6) # NMI, ARI, ACC, HOM, COM, PUR
+
+# output_holder = torch.load(os.path.join(output_dir, 'result_table_seq0.pt'))
 
 
 for seq_iter in range(0,args.num_seq):
 
-  #if seq_iter == 3: break
+  #if seq_iter == 1: break
 
   adj_matrix = data['adj_matrices'][seq_iter]
   labels = data['labels'][seq_iter]
@@ -359,8 +366,10 @@ for seq_iter in range(0,args.num_seq):
   node_degrees = torch.zeros(adj_matrix.shape[0], dtype=torch.float32).to(device)
   node_degrees.scatter_add_(0, edge_index[0], torch.ones(args.num_edge).to(device))
 
+  #print('[INFO] node degree:', node_degrees.mean())
 
-  new_y_data, removed_y_data, removed_nodes = data_split(args, y_data, edge_index, split_at=10)
+  # remove nodes
+  new_y_data, removed_y_data, removed_nodes = data_split(args, y_data, edge_index, split_at=args.num_node/(args.num_node*remove_ratio)) 
   
 
   print('\n')
@@ -385,14 +394,15 @@ for seq_iter in range(0,args.num_seq):
   print(output_seq)
 
   # use full data, None for removed_y_data and removed_nodes 
-  NMI, ARI, ACC = learn_one_seq_penalty(args, y_data, None, None, labels,\
+  NMI, ARI, ACC, HOM, COM, PUR = learn_one_seq_penalty(args, y_data, None, None, labels,\
               source_nodes, target_nodes, node_degrees, adj_matrix, 
               seq_iter, pen_iter=best_index, CV=False)
 
 
-  output_holder[seq_iter,:] = torch.tensor((NMI,ARI,ACC))
+  output_holder[seq_iter,:] = torch.tensor((NMI, ARI, ACC, HOM, COM, PUR))
   print('[INFO] result for seq_iter = {}:\n'.format(seq_iter), output_holder[seq_iter,:])
   torch.save(output_holder, os.path.join(output_dir, 'result_table_seq{}.pt'.format(seq_iter)) ) # have previous results
+
 
 
 print('output_holder:\n', output_holder)
