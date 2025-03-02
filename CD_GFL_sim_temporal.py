@@ -28,7 +28,7 @@ def parse_args():
   parser.add_argument('--num_samples', default=500)
   parser.add_argument('--langevin_K', default=50)
   parser.add_argument('--langevin_s', default=0.4) 
-  parser.add_argument('--penalties', default=[0.1, 0.25, 0.5, 0.75]) # [0.1, 0.25, 0.5, 0.75]
+  parser.add_argument('--penalties', default=[0.1, 0.25, 0.5, 0.75]) #
   #parser.add_argument('--gamma', default=10)
   
   parser.add_argument('--epoch', default=50) # ADMM iteration
@@ -76,13 +76,15 @@ elif args.use_data == 's2':
   print('[INFO] num_node = {}'.format(args.num_node))
   data = np.load(args.data_dir +'data_s2_n{}.npz'.format(args.num_node))
   output_dir = os.path.join("result/s2_n{}".format(args.num_node))
-  remove_ratio = 0.05
+  remove_ratio = 0.1
 elif args.use_data == 's3':
   print('[INFO] num_node = {}'.format(args.num_node))
   data = np.load(args.data_dir +'data_s3_n{}.npz'.format(args.num_node))
   output_dir = os.path.join("result/s3_n{}".format(args.num_node))
-  remove_ratio = 0.05
-  
+  remove_ratio = 0.1
+
+
+args.output_dir = output_dir
 os.makedirs(output_dir, exist_ok=True)
 with open(output_dir+"/args.txt", 'w') as f:
     for arg, value in vars(args).items():
@@ -327,7 +329,7 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
     return log_lik
   else:
     torch.save(mu, os.path.join(output_dir, 'mu_par_seq{}_pen{}.pt'.format(seq_iter, pen_iter)) )
-    clusters, NMI, ARI, ACC, HOM, COM, PUR= evaluation_gamma(mu, args, pen_iter, node_degrees, adj_matrix, labels)
+    clusters, NMI, ARI, ACC, HOM, COM, PUR= evaluation_gamma(mu, args, seq_iter, node_degrees, adj_matrix, labels)
 
     # save here for a specific sequence and penalty
     with open(output_dir + '/clusters_seq{}_pen{}.txt'.format(seq_iter,pen_iter), 'w') as f:
@@ -352,7 +354,7 @@ output_holder = torch.zeros(args.num_seq, 6) # NMI, ARI, ACC, HOM, COM, PUR
 
 for seq_iter in range(0,args.num_seq):
 
-  #if seq_iter == 1: break
+  #if seq_iter == 3: break
 
   adj_matrix = data['adj_matrices'][seq_iter]
   labels = data['labels'][seq_iter]

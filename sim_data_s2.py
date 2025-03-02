@@ -20,13 +20,13 @@ def parse_args():
   parser = argparse.ArgumentParser()
   
   parser.add_argument('--data_name', default="s2")
-  parser.add_argument('--num_seq', default=15)
+  parser.add_argument('--num_seq', default=10)
   parser.add_argument('--num_nodes', default=150, type=int)
   parser.add_argument('--num_communities', default=3)
-  parser.add_argument('--cov_rho', default=0.1)
+  parser.add_argument('--cov_rho', default=0.2)
   parser.add_argument('--dim_z', default=10)
   parser.add_argument('--dim_y', default=10)
-  parser.add_argument('--hidden_dim', default=16)
+  parser.add_argument('--hidden_dim', default=10)
   parser.add_argument('--T', default=30)
   parser.add_argument('--edge_prob_intra', default=0.35)
   parser.add_argument('--edge_prob_inter', default=0.15)
@@ -39,9 +39,9 @@ args = parse_args()
 
 
 if args.num_nodes == 150:
-  community_sizes = [60,50,40] 
+  community_sizes = [50,50,50] 
 elif args.num_nodes == 300:
-  community_sizes = [120,100,80] 
+  community_sizes = [100,100,100] 
 
 
 
@@ -65,9 +65,9 @@ class RNN(nn.Module):
   def init_rnn_weights(self, rnn):
     for name, param in rnn.named_parameters():
       if 'weight' in name:
-        nn.init.uniform_(param, -0.1, 0.1)
+        nn.init.uniform_(param, -0.2, 0.2)
       elif 'bias' in name:
-        nn.init.uniform_(param, -0.1, 0.1)
+        nn.init.uniform_(param, -0.2, 0.2)
 
 
 
@@ -79,9 +79,9 @@ y_list = []
 
 
 means = [
-        -5.0 * torch.ones(args.dim_z), # Community 1
+        -2.0 * torch.ones(args.dim_z), # Community 1
         0.0 * torch.ones(args.dim_z), # Community 2
-        5.0 * torch.ones(args.dim_z) # Community 3
+        2.0 * torch.ones(args.dim_z) # Community 3
     ]
 
 covariance_matrix = torch.eye(args.dim_z) * args.cov_rho

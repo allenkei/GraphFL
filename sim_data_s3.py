@@ -23,10 +23,10 @@ def parse_args():
   parser.add_argument('--num_seq', default=10)
   parser.add_argument('--grid_size', default=15, type=int)
   parser.add_argument('--cov_rho', default=0.1)
-  parser.add_argument('--dim_z', default=5)
-  parser.add_argument('--dim_y', default=5)
+  parser.add_argument('--dim_z', default=10)
+  parser.add_argument('--dim_y', default=10)
   parser.add_argument('--hidden_dim', default=10)
-  parser.add_argument('--T', default=15)
+  parser.add_argument('--T', default=30)
   
   return parser.parse_args()
 
@@ -57,9 +57,9 @@ class RNN(nn.Module):
   def init_rnn_weights(self, rnn):
     for name, param in rnn.named_parameters():
       if 'weight' in name:
-        nn.init.uniform_(param, -0.1, 0.1)
+        nn.init.uniform_(param, -0.3, 0.3)
       elif 'bias' in name:
-        nn.init.uniform_(param, -0.1, 0.1)
+        nn.init.uniform_(param, -0.3, 0.3)
 
 
 
@@ -94,10 +94,10 @@ for idx in range(args.num_seq):
             labels[i] = 3  # Bottom-right region
 
     means = [
-        -10.0 * torch.ones(args.dim_z),  # Top-left region
-        -5.0 * torch.ones(args.dim_z),   # Top-right region
+        -2.0 * torch.ones(args.dim_z),  # Top-left region
+        -1.0 * torch.ones(args.dim_z),   # Top-right region
         0.0 * torch.ones(args.dim_z),    # Bottom-left region
-        5.0 * torch.ones(args.dim_z),    # Bottom-right region
+        1.0 * torch.ones(args.dim_z),    # Bottom-right region
     ]
     
 
