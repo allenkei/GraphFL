@@ -1,35 +1,91 @@
-import torch
-import numpy as np
-from collections import defaultdict
-import scipy.stats as st
+import argparse
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import random
+import os
+import datetime
+from collections import defaultdict
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
-#from kneed import KneeLocator
+from CD_evaluation import assign_predicted_clusters, dict_to_label_list, cluster_purity
 from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score, accuracy_score, homogeneity_score, completeness_score, confusion_matrix
 
 
 
-##############
-# EVALUATION #
-##############
 
 
-def evaluation_gamma(mu, args, seq_iter, node_degrees, adj_matrix, labels):
+seed = 42
+random.seed(seed)
+np.random.seed(seed)
 
-  # mu: n by d
 
-  torch.manual_seed(1)
-  np.random.seed(1)
 
-  alpha = 0.01 # for threshold
-  n = args.num_node
-  E = args.num_edge
-  d = args.latent_dim
-  num_sample = args.gamma_num_samples
-  num_T = args.num_T
-  mu = mu.cpu().numpy() # n by d
 
+
+def parse_args():
+  parser = argparse.ArgumentParser()
+
+  parser.add_argument('--output_dim', default=10, type=int)
+  parser.add_argument('--use_data', default='s1') 
+  parser.add_argument('--num_node', default=150, type=int)
+  parser.add_argument('--num_T', default=30, type=int) # number of time points
+  parser.add_argument('--num_seq', default=10)
+  parser.add_argument('--data_dir', default='./data/')
+  parser.add_argument('-f', required=False)
+
+  return parser.parse_args()
+
+
+
+args = parse_args(); print(args)
+
+
+###################
+# LOAD SAVED DATA #
+###################
+
+if args.use_data == 's1':
+  print('[INFO] num_node = {}'.format(args.num_node))
+  data = np.load(args.data_dir +'data_s1.npz')
+  output_dir = os.path.join(f"result/c1_s1")
+elif args.use_data == 's2':
+  print('[INFO] num_node = {}'.format(args.num_node))
+  data = np.load(args.data_dir +'data_s2_n{}.npz'.format(args.num_node))
+  output_dir = os.path.join("result/c1_s2_n{}".format(args.num_node))
+  remove_ratio = 0.1
+elif args.use_data == 's3':
+  print('[INFO] num_node = {}'.format(args.num_node))
+  data = np.load(args.data_dir +'data_s3_n{}.npz'.format(args.num_node))
+  output_dir = os.path.join("result/c1_s3_n{}".format(args.num_node))
+  remove_ratio = 0.1
+
+
+args.output_dir = output_dir
+os.makedirs(output_dir, exist_ok=True)
+
+
+
+
+
+###########
+# K-MEANS #
+###########
+
+
+
+
+output_holder = np.zeros((args.num_seq, 6)) # NMI, ARI, ACC, HOM, COM, PUR
+
+
+
+
+for seq_iter in range(0,args.num_seq):
+
+
+  labels = data['labels'][seq_iter]
+  y_data = data['y'][seq_iter] # n by T by p
+  y_data = y_data.reshape(args.num_node, args.num_T * args.output_dim)  # n by T*p
 
 
   silhouette_scores = []
@@ -39,8 +95,8 @@ def evaluation_gamma(mu, args, seq_iter, node_degrees, adj_matrix, labels):
   for K in K_range:
       if K > 1:  # Silhouette score is only valid for K > 1
           kmeans = KMeans(n_clusters=K, random_state=42, n_init=10)
-          kmeans.fit(mu)
-          score = silhouette_score(mu, kmeans.labels_)
+          kmeans.fit(y_data)
+          score = silhouette_score(y_data, kmeans.labels_)
           silhouette_scores.append(score)
       else:
           silhouette_scores.append(None)  # Append None for K=1
@@ -65,7 +121,8 @@ def evaluation_gamma(mu, args, seq_iter, node_degrees, adj_matrix, labels):
 
   # Perform K-Means with optimal K
   kmeans = KMeans(n_clusters=optimal_K, random_state=42, n_init=10)
-  cluster_labels = kmeans.fit_predict(mu).tolist() # [0,0,0,0,1,1,1,1]
+  cluster_labels = kmeans.fit_predict(y_data).tolist() # [0,0,0,0,1,1,1,1]
+
 
   # want [[0,1,2,3],[4,5,6,7]]
   clusters_dict = defaultdict(list)
@@ -79,14 +136,11 @@ def evaluation_gamma(mu, args, seq_iter, node_degrees, adj_matrix, labels):
   print("Cluster assignments:", clusters)
 
 
-
   # label: list of label [0,0,0,1,1,1,2,2,2]
   # clusters: list of cluster by node index [[0,1,2],[3,4,5],[6,7,8]]
   true_dict, pred_dict = assign_predicted_clusters(labels, clusters) # dictionary
   true_label_list = dict_to_label_list(true_dict) # list of label
   pred_label_list = dict_to_label_list(pred_dict) # list of label
-
-
 
 
   ######################
@@ -112,103 +166,27 @@ def evaluation_gamma(mu, args, seq_iter, node_degrees, adj_matrix, labels):
   print(f"[INFO] Completeness: {COM:.4f}")
   print(f"[INFO] Cluster Purity: {PUR:.4f}")
   
-
-  return clusters, NMI, ARI, ACC, HOM, COM, PUR
-
-
-
-
-
-###########
-# UTILITY #
-###########
+  # Store the metrics for the current sequence in the output_holder
+  output_holder[seq_iter, :] = [NMI, ARI, ACC, HOM, COM, PUR]
 
 
 
 
-
-
-def data_split(args, y_data, edge_index, split_at):
-    new_y_data = []      # For training
-    removed_y_data = []  # For testing
-    removed_nodes = []
-  
-    for node in range(args.num_node):
-        if node % split_at == 0: 
-            removed_y_data.append(y_data[node])
-            removed_nodes.append(node)
-
-            neighbors = edge_index[1][edge_index[0] == node].tolist() 
-            
-            if neighbors:
-                neighbor_values = y_data[neighbors] 
-                average_neighbor_value = neighbor_values.mean(dim=0)
-                new_y_data.append(average_neighbor_value)
-            else:
-                new_y_data.append(y_data[node])
-        else:
-            new_y_data.append(y_data[node])
-                  
-    new_y_data = torch.stack(new_y_data)
-    removed_y_data = torch.stack(removed_y_data)
-  
-    return new_y_data, removed_y_data, removed_nodes
+print('output_holder:\n', output_holder)
+print('Mean performance:\n', np.mean(output_holder, axis=0))
+print('Standard deviation of performance:\n', np.std(output_holder, axis=0))
 
 
 
+# Convert output_holder to a DataFrame for easier handling
+df = pd.DataFrame(output_holder, columns=['NMI', 'ARI', 'ACC', 'HOM', 'COM', 'PUR'])
 
-def assign_predicted_clusters(true_labels, predicted_clusters):
-
-    true_dict = defaultdict(list)
-    for idx, label in enumerate(true_labels):
-        true_dict[label].append(idx)
-    true_dict = dict(true_dict)
-
-    assigned_labels = {} 
-    predicted_dict = {}
-
-    used_labels = set()
-    new_label = max(true_dict.keys()) + 1  
-
-    for i, cluster in enumerate(predicted_clusters):
-
-        overlap_count = {label: len(set(cluster) & set(indices)) for label, indices in true_dict.items()}
-        best_label = max(overlap_count, key=overlap_count.get)
-        
-        if overlap_count[best_label] > 0 and best_label not in used_labels:
-            assigned_labels[i] = best_label
-            used_labels.add(best_label)
-        else:
-            assigned_labels[i] = new_label
-            new_label += 1 
-
-    for i, cluster in enumerate(predicted_clusters):
-        label = assigned_labels[i]
-        predicted_dict[label] = cluster
-
-    return true_dict, predicted_dict
+# Save to a CSV file
+output_file = os.path.join(output_dir, 'result_c1.csv')
+df.to_csv(output_file, index=False)
 
 
 
 
 
 
-def dict_to_label_list(cluster_dict):
-
-  max_index = max(max(indices) for indices in cluster_dict.values())  
-  label_list = [-1] * (max_index + 1)
-
-  for label, indices in cluster_dict.items():
-      for idx in indices:
-          label_list[idx] = label
-
-  return label_list
-
-
-
-
-# CLUSTER PURITY
-def cluster_purity(y_true, y_pred):
-  cm = confusion_matrix(y_true, y_pred)
-  purity = np.sum(np.amax(cm, axis=1)) / np.sum(cm)
-  return purity
