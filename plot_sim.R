@@ -7,8 +7,8 @@ library(pheatmap)
 np <- reticulate::import("numpy")
 
 
-adj_mat1 <- "data/data_s2_n150.npz"
-adj_mat2 <- "data/data_s3_n196.npz" 
+adj_mat1 <- "data/data_s1_n120.npz"
+adj_mat2 <- "data/data_s2_n196.npz" 
 
 
 data1 <- np$load(adj_mat1)
@@ -51,6 +51,19 @@ layout[comm_2_nodes, ] <- cbind(runif(length(comm_2_nodes), min = -0.6, max = -0
 layout[comm_3_nodes, ] <- cbind(runif(length(comm_3_nodes), min = 0.2, max = 0.6),  # Wider range for x
                                 runif(length(comm_3_nodes), min = -1.3, max = -0.5))  # Lower y values for bottom-right
 
+
+
+
+
+graph2 <- graph_from_adjacency_matrix(adj_mat2, mode = "undirected", diag = FALSE)
+cluster_colors2 <- colorRampPalette(c("deepskyblue","lightgreen","coral", "orange"))(4)
+node_colors2 <- cluster_colors2[as.factor(label2)]
+
+
+
+
+# 10 by 5
+set.seed(3) # needed for node location in figures
 plot(graph, 
      vertex.size = 5, vertex.label = NA, vertex.color = node_colors,  
      layout = layout, edge.color = "lightgray",  
@@ -59,18 +72,8 @@ plot(graph,
      ylim = c(-1, 1)) 
 
 
-
-
-
- 
-
-
-
-graph <- graph_from_adjacency_matrix(adj_mat2, mode = "undirected", diag = FALSE)
-cluster_colors <- colorRampPalette(c("deepskyblue","lightgreen","coral", "orange"))(4)
-node_colors <- cluster_colors[as.factor(label2)]
-plot(graph, vertex.size = 5, vertex.label = NA, 
-     vertex.color = node_colors,
+plot(graph2, vertex.size = 5, vertex.label = NA, 
+     vertex.color = node_colors2,
      main = "Grid Graph with 4 Clusters")
 
 
@@ -79,12 +82,20 @@ plot(graph, vertex.size = 5, vertex.label = NA,
 
 
 
+par(mfrow=c(1,2))
+par(mar = c(2,2,2,2))
 
-#image(adj_mat1, xaxt = "n", yaxt = "n")
-#axis(side=1,at=seq(0,1,length.out = 4),labels=c(1,50,100,150),xpd=NA,cex.axis=1)
-#axis(side=2,at=seq(0,1,length.out = 4),labels=c(1,50,100,150),xpd=NA,cex.axis=1)
+image(adj_mat1, xaxt = "n", yaxt = "n", main="Graph with 3 Clusters")
+axis(side=1,at=seq(0,1,length.out = 4),labels=c(1,40,80,120),xpd=NA,cex.axis=1)
+axis(side=2,at=seq(0,1,length.out = 4),labels=c(1,40,80,120),xpd=NA,cex.axis=1)
 
-# Plot heatmap
+image(adj_mat2, xaxt = "n", yaxt = "n", main = "Grid Graph with 4 Clusters")
+axis(side=1,at=seq(0,1,length.out = 4),labels=c(1,65,130,196),xpd=NA,cex.axis=1)
+axis(side=2,at=seq(0,1,length.out = 4),labels=c(1,65,130,196),xpd=NA,cex.axis=1)
+
+
+
+
 #pheatmap(adj_mat1, cluster_rows = FALSE, cluster_cols = FALSE, 
 #         main = "Heatmap of Adjacency Matrix", 
 #         color = colorRampPalette(c("white", "blue"))(100))
