@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import random
 import os
 import datetime
@@ -72,14 +73,12 @@ if args.use_data == 's1':
   data = np.load(args.data_dir +'data_s1_n{}.npz'.format(args.num_node))
   output_dir = os.path.join("result/s1_n{}".format(args.num_node))
   remove_ratio = 0.1
-
-''' 
-elif args.use_data == 's3':
+elif args.use_data == 's2':
   print('[INFO] num_node = {}'.format(args.num_node))
-  data = np.load(args.data_dir +'data_s3_n{}.npz'.format(args.num_node))
-  output_dir = os.path.join("result/s3_n{}".format(args.num_node))
+  data = np.load(args.data_dir +'data_s2_n{}.npz'.format(args.num_node))
+  output_dir = os.path.join("result/s2_n{}".format(args.num_node))
   remove_ratio = 0.1
-'''
+
 
 args.output_dir = output_dir
 os.makedirs(output_dir, exist_ok=True)
@@ -297,7 +296,7 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
         #print('\n[INFO] gamma decreased to', gamma)
       '''
 
-
+      '''
       with torch.no_grad():
         # second row - first row
         delta_mu = torch.norm(torch.diff(mu, dim=0), p=2, dim=1)
@@ -312,7 +311,7 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
         plt.plot(delta_mu)
         plt.savefig( output_dir + fig_name + '.png' ) 
         plt.close()
-  
+      '''
 
   if CV:
     mu_removed = mu[removed_nodes]
@@ -397,7 +396,10 @@ for seq_iter in range(0,args.num_seq):
 
 
 print('output_holder:\n', output_holder)
-torch.save(output_holder, os.path.join(output_dir, 'result_table_all.pt') ) # save all results in the last
+columns = ['NMI', 'ARI', 'ACC', 'HOM', 'COM', 'PUR']
+df = pd.DataFrame(output_holder.cpu().numpy(), columns=columns)
+df.to_csv(os.path.join(output_dir, 'output_metrics.csv'), index=False)
+#torch.save(output_holder, os.path.join(output_dir, 'result_table_all.pt') ) # save all results in the last
 
 # print result for table
 print('mean perforamnce:\n', np.mean(output_holder.cpu().numpy(),axis=0))

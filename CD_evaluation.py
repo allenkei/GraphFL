@@ -14,76 +14,22 @@ from sklearn.metrics import normalized_mutual_info_score, adjusted_rand_score, a
 # EVALUATION #
 ##############
 
+def evaluation(true_labels, pred_labels):
+  # true_labels: [0,0,0,1,1,1,2,2,2]
+  # pred_labels: [0,0,0,1,1,1,2,2,2]
 
-def evaluation_sim(mu, args, seq_iter, node_degrees, adj_matrix, labels):
-
-  # mu: n by d
-
-  torch.manual_seed(1)
-  np.random.seed(1)
-
-  #alpha = 0.01 # for threshold
-  n = args.num_node
-  E = args.num_edge
-  d = args.latent_dim
-  num_T = args.output_dim
-  mu = mu.cpu().numpy() # n by d
-
-
-
-  silhouette_scores = []
-  K_range = range(1, 11)  # Checking K from 1 to 10
-
-  # Calculate Silhouette scores
-  for K in K_range:
-      if K > 1:  # Silhouette score is only valid for K > 1
-          kmeans = KMeans(n_clusters=K, random_state=42, n_init=10)
-          kmeans.fit(mu)
-          score = silhouette_score(mu, kmeans.labels_)
-          silhouette_scores.append(score)
-      else:
-          silhouette_scores.append(None)  # Append None for K=1
-
-  # Filter out None values for silhouette_scores
-  valid_silhouette_scores = [score for score in silhouette_scores if score is not None]
-  valid_K_range = [K for K, score in zip(K_range, silhouette_scores) if score is not None]
-  optimal_K = valid_K_range[valid_silhouette_scores.index(max(valid_silhouette_scores))]
-
-
-  # Plot the results
-  plt.figure(figsize=(8, 5))
-  plt.plot(K_range, silhouette_scores, marker='o', linestyle='--', label="Silhouette Score")
-  plt.axvline(x=optimal_K, color='r', linestyle='--', label=f"Optimal K = {optimal_K}")
-  plt.xlabel("Number of Clusters (K)")
-  plt.ylabel("Silhouette Score")
-  plt.title("Silhouette Score vs. Number of Clusters")
-  plt.savefig( args.output_dir + '/K-mean_elbow_seq{}.png'.format(seq_iter) ) 
-  plt.close()
-
-  # Perform K-Means with optimal K
-  kmeans = KMeans(n_clusters=optimal_K, random_state=42, n_init=10)
-  cluster_labels = kmeans.fit_predict(mu).tolist() # [0,0,0,0,1,1,1,1]
-
-  # want [[0,1,2,3],[4,5,6,7]]
+  # want [[0,1,2],[3,4,5],[6,7,8]]
   clusters_dict = defaultdict(list)
-  for node_idx, cluster_id in enumerate(cluster_labels):
+  for node_idx, cluster_id in enumerate(pred_labels):
       clusters_dict[cluster_id].append(node_idx)
 
-  clusters = list(clusters_dict.values())
+  clusters = list(clusters_dict.values()) # [[0,1,2],[3,4,5],[6,7,8]]
 
-
-  print("Optimal number of clusters:", optimal_K)
-  print("Cluster assignments:", clusters)
-
-
-
-  # label: list of label [0,0,0,1,1,1,2,2,2]
+  # true_labels: list of label [0,0,0,1,1,1,2,2,2]
   # clusters: list of cluster by node index [[0,1,2],[3,4,5],[6,7,8]]
-  true_dict, pred_dict = assign_predicted_clusters(labels, clusters) # dictionary
+  true_dict, pred_dict = assign_predicted_clusters(true_labels, clusters) # dictionary
   true_label_list = dict_to_label_list(true_dict) # list of label
   pred_label_list = dict_to_label_list(pred_dict) # list of label
-
-
 
 
   ######################
@@ -112,6 +58,59 @@ def evaluation_sim(mu, args, seq_iter, node_degrees, adj_matrix, labels):
 
   return clusters, NMI, ARI, ACC, HOM, COM, PUR
 
+
+
+
+
+
+def evaluation_sim(mu, args, seq_iter, node_degrees, adj_matrix, true_labels):
+
+  # mu: n by d
+
+  torch.manual_seed(1)
+  np.random.seed(1)
+
+  n = args.num_node
+  E = args.num_edge
+  d = args.latent_dim
+  num_T = args.output_dim
+  mu = mu.cpu().numpy() # n by d
+
+
+
+  silhouette_scores = []
+  K_range = range(2, 11)  # Checking K from 2 to 10
+
+  # Calculate Silhouette scores
+  for K in K_range:
+      kmeans = KMeans(n_clusters=K, random_state=42, n_init=10)
+      kmeans.fit(mu)
+      score = silhouette_score(mu, kmeans.labels_)
+      silhouette_scores.append(score)
+
+  # Filter out None values for silhouette_scores
+  valid_silhouette_scores = [score for score in silhouette_scores if score is not None]
+  valid_K_range = [K for K, score in zip(K_range, silhouette_scores) if score is not None]
+  optimal_K = valid_K_range[valid_silhouette_scores.index(max(valid_silhouette_scores))]
+
+  '''
+  # Visaulize the results
+  plt.figure(figsize=(8, 5))
+  plt.plot(K_range, silhouette_scores, marker='o', linestyle='--', label="Silhouette Score")
+  plt.axvline(x=optimal_K, color='r', linestyle='--', label=f"Optimal K = {optimal_K}")
+  plt.xlabel("Number of Clusters (K)")
+  plt.ylabel("Silhouette Score")
+  plt.title("Silhouette Score vs. Number of Clusters")
+  plt.savefig( args.output_dir + '/K-mean_elbow_seq{}.png'.format(seq_iter) ) 
+  plt.close()
+  '''
+
+  # Perform K-Means with optimal K
+  print("Optimal number of clusters:", optimal_K)
+  kmeans = KMeans(n_clusters=optimal_K, random_state=42, n_init=10)
+  pred_labels = kmeans.fit_predict(mu).tolist() # [0,0,0,1,1,1,2,2,2]
+
+  return evaluation(true_labels, pred_labels)
 
 
 
@@ -199,7 +198,7 @@ def evaluation_real(mu, args, node_degrees, adj_matrix):
 
 
 
-
+# CROSS-VALIDATION
 def data_split(args, y_data, edge_index, split_at):
     new_y_data = []      # For training
     removed_y_data = []  # For testing

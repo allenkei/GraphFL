@@ -25,8 +25,8 @@ def parse_args():
   parser.add_argument('--num_communities', default=3)
   parser.add_argument('--dim_z', default=10)
   parser.add_argument('--T', default=100)
-  parser.add_argument('--edge_prob_intra', default=0.30)
-  parser.add_argument('--edge_prob_inter', default=0.15)
+  parser.add_argument('--edge_prob_intra', default=0.20)
+  parser.add_argument('--edge_prob_inter', default=0.10)
   
   return parser.parse_args()
 
@@ -37,38 +37,43 @@ args = parse_args()
 
 if args.num_nodes == 120:
   community_sizes = [40,40,40] 
-elif args.num_nodes == 240:
-  community_sizes = [80,80,80] 
+elif args.num_nodes == 210:
+  community_sizes = [70,70,70] 
 
 
 
 
 
-def generate_time_series(community_sizes, T=args.T, sigma=0.5):
+def generate_time_series(labels, T=100, sigma=0.25):
     """
     Parameters:
-        community_sizes (list): list of ints (number of nodes per cluster)
+        labels (list or 1D tensor): Cluster label for each node (length n)
         T (int): Length of each time series
         sigma (float): Standard deviation of white noise
 
     Returns:
-        torch.Tensor: Tensor of shape (n, T) with node time series
+        torch.Tensor: (n, T) tensor of time series
     """
-    # Fixed parameters for each cluster (amplitude, frequency, phase)
-    A_list   = [0.8, 1.0, 1.2]
-    f_list   = [0.75, 1.0, 1.25]
+    labels = torch.tensor(labels, dtype=torch.long)
+    n = len(labels)
+    output = torch.empty((n, T))
+
+    # Fixed cluster parameters
+    A_list   = [0.5, 0.6, 0.7]
+    f_list   = [0.8, 1.0, 1.2]
     phi_list = [0.1, 0.2, 0.3]
 
-    total_nodes = sum(community_sizes)
     time = torch.linspace(0, 2 * torch.pi, T)
-    output = torch.empty((total_nodes, T))
 
-    idx = 0
-    for k, size in enumerate(community_sizes):
-        mu_k = A_list[k] * torch.sin(f_list[k] * time + phi_list[k])
-        noise = sigma * torch.randn((size, T))
-        output[idx: (idx + size)] = mu_k + noise
-        idx += size
+    cluster_ts = []
+    for A, f, phi in zip(A_list, f_list, phi_list):
+        mu = A * torch.sin(f * time + phi)
+        cluster_ts.append(mu)
+
+    for i in range(n):
+        c = labels[i]
+        noise = sigma * torch.randn(T)
+        output[i] = cluster_ts[c] + noise
 
     return output
 
@@ -88,8 +93,7 @@ for idx in range(args.num_seq):
     #print(f"[INFO] labels for sequence {idx}:", labels)
 
 
-    #y_data = generate_time_series(means, args.T).cpu().numpy()  # (n, T)
-    y_data = generate_time_series(community_sizes)  # (n, T)
+    y_data = generate_time_series(labels)  # (n, T)
 
     graph = nx.Graph()
     graph.add_nodes_from(range(args.num_nodes))

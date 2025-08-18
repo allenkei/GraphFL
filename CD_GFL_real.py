@@ -18,6 +18,8 @@ random.seed(seed)
 np.random.seed(seed)
 torch.manual_seed(seed)
 torch.cuda.manual_seed(seed)
+#torch.backends.cudnn.deterministic = True
+#torch.backends.cudnn.benchmark = False
 
 
 
@@ -75,7 +77,7 @@ if args.use_data == 'CA':
 
   output_dir = os.path.join("result/CA_{}".format(timestamp))
 
-  remove_ratio = 0.1
+  remove_ratio = 0.1 # model selection
 
 
 
@@ -88,7 +90,6 @@ with open(output_dir+"/args.txt", 'w') as f:
 def init_weights(m):
   for name, param in m.named_parameters():
     nn.init.uniform_(param.data, -0.05, 0.05)
-
 
 
 #########
@@ -108,10 +109,11 @@ class CD_temp(nn.Module):
         
   def forward(self, z):
     # z: nm by d
-
+    
     output = self.l1(z).relu()
     output = self.l2(output).relu()
     output = self.l3(output) # nm by T
+    
     return output
 
     
@@ -324,11 +326,14 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes,\
     log_lik = model.cal_loglik(mu_removed, removed_y_data)
     return log_lik
   else:
-    #torch.save(mu, os.path.join(output_dir, 'mu_par_pen{}.pt'.format(pen_iter)) )
+    # save decoder
+    torch.save(model.state_dict(), output_dir + '/model_weights.pth')
+
+    # save mu
     np.savetxt(output_dir + "/mu_par_pen0.csv", mu.detach().cpu().numpy(), delimiter=",")
     clusters, cluster_label = evaluation_real(mu, args, node_degrees, adj_matrix)
 
-    # save here for a specific sequence and penalty
+    # save cluster for a specific sequence and penalty
     with open(output_dir + '/clusters_pen{}.txt'.format(pen_iter), 'w') as f:
       for cluster in clusters:
           f.write(' '.join(map(str, cluster)) + '\n')
@@ -369,6 +374,7 @@ print('[INFO] edge_index loaded with shape:', edge_index.shape)
 
 output_seq = []
 for pen_iter in range(len(args.penalties)):
+  # NOTE: new_y_data
   loglik_seq = learn_one_seq_penalty(args, new_y_data, removed_y_data, removed_nodes,\
             source_nodes, target_nodes, node_degrees, adj_matrix, pen_iter=pen_iter, CV=True)
   output_seq.append(loglik_seq.item())
@@ -378,7 +384,7 @@ best_index = output_seq.index(max(output_seq))
 print("\nbest_index:" , best_index)
 print(output_seq)
 
-# use full data, None for removed_y_data and removed_nodes 
+# use full data, None for removed_y_data and removed_nodes
 clusters, cluster_label = learn_one_seq_penalty(args, y_data, None, None, source_nodes, target_nodes,\
                             node_degrees, adj_matrix, pen_iter=best_index, CV=False)
 
