@@ -24,7 +24,7 @@ torch.cuda.manual_seed(seed)
 def parse_args():
   parser = argparse.ArgumentParser()
 
-  parser.add_argument('--latent_dim', default=10, type=int)
+  parser.add_argument('--latent_dim', default=5, type=int)
   parser.add_argument('--output_dim', default=100, type=int)
   parser.add_argument('--num_samples', default=500)
   parser.add_argument('--langevin_K', default=50)
@@ -32,17 +32,15 @@ def parse_args():
   parser.add_argument('--penalties', default=[0.1, 0.25, 0.5, 0.75])
   #parser.add_argument('--gamma', default=10)
   
-  parser.add_argument('--epoch', default=50) # ADMM iteration
+  parser.add_argument('--epoch', default=40) # ADMM iteration
   parser.add_argument('--decoder_iteration', default=20)
   parser.add_argument('--nu_iteration', default=20)
-  parser.add_argument('--decoder_lr', default=0.0001)
+  parser.add_argument('--decoder_lr', default=0.001)
   parser.add_argument('--decoder_thr', default=0.0001)
-  #parser.add_argument('--iter_thr', default=5)
 
   parser.add_argument('--use_data', default='s1') 
   parser.add_argument('--num_node', default=150, type=int)
-  #parser.add_argument('--num_T', default=60, type=int) # number of time points
-  parser.add_argument('--hidden_dim', default=32)
+  parser.add_argument('--hidden_dim', default=[32,32])
   parser.add_argument('--num_seq', default=10, type=int)
 
   parser.add_argument('--data_dir', default='./data/')
@@ -68,16 +66,12 @@ timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 # LOAD SAVED DATA #
 ###################
 
-if args.use_data == 's1':
-  print('[INFO] num_node = {}'.format(args.num_node))
-  data = np.load(args.data_dir +'data_s1_n{}.npz'.format(args.num_node))
-  output_dir = os.path.join("result/s1_n{}".format(args.num_node))
-  remove_ratio = 0.1
-elif args.use_data == 's2':
-  print('[INFO] num_node = {}'.format(args.num_node))
-  data = np.load(args.data_dir +'data_s2_n{}.npz'.format(args.num_node))
-  output_dir = os.path.join("result/s2_n{}".format(args.num_node))
-  remove_ratio = 0.1
+
+print('[INFO] num_node = {}'.format(args.num_node))
+data = np.load(args.data_dir +'data_{}_n{}.npz'.format(args.use_data,args.num_node))
+output_dir = os.path.join("result/{}_n{}".format(args.use_data,args.num_node))
+remove_ratio = 0.1
+
 
 
 args.output_dir = output_dir
@@ -103,15 +97,15 @@ class CD_temp(nn.Module):
     self.d = args.latent_dim
     self.output_dim = args.output_dim
     
-    self.l1 = nn.Linear(args.latent_dim, args.hidden_dim)
-    self.l2 = nn.Linear(args.hidden_dim, args.hidden_dim)
-    self.l3 = nn.Linear(args.hidden_dim, args.output_dim)
+    self.l1 = nn.Linear(args.latent_dim, args.hidden_dim[0])
+    self.l2 = nn.Linear(args.hidden_dim[0], args.hidden_dim[1])
+    self.l3 = nn.Linear(args.hidden_dim[1], args.output_dim)
         
   def forward(self, z):
     # z: nm by d
 
-    output = self.l1(z).tanh()
-    output = self.l2(output).tanh()
+    output = self.l1(z).relu()
+    output = self.l2(output).relu()
     output = self.l3(output) # nm by T
 
     return output
@@ -217,13 +211,14 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
       nn.utils.clip_grad_norm_(model.parameters(),1)
       optimizer.step()
 
-    
+      '''
       # early stopping for decoder
       loss_relative_diff = abs( (loss.item() - inner_loss) / inner_loss )
       inner_loss = loss.item()
       if loss_relative_diff < args.decoder_thr: 
         #print('[INFO] decoder early stopping')
         break
+      '''
 
     ################
     # UPDATE PRIOR # 
@@ -275,7 +270,6 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
     primal_residual = torch.sqrt(torch.mean(torch.square(mu[source_nodes] - mu[target_nodes] - nu)))
     dual_residual = torch.sqrt(torch.mean(torch.square(nu - nu_old)))
 
-    
     mu_old = mu.detach().clone()
     nu_old = nu.detach().clone()
 
@@ -285,18 +279,7 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
       print('\t\tprimal residual =', primal_residual)
       print('\t\tdual residual =', dual_residual)
 
-      '''
-      if primal_residual > 10.0 * dual_residual:
-        gamma *= 2.0
-        w *= 0.5
-        #print('\n[INFO] gamma increased to', gamma)
-      elif dual_residual > 10.0 * primal_residual:
-        gamma *= 0.5
-        w *= 2.0
-        #print('\n[INFO] gamma decreased to', gamma)
-      '''
 
-      '''
       with torch.no_grad():
         # second row - first row
         delta_mu = torch.norm(torch.diff(mu, dim=0), p=2, dim=1)
@@ -311,7 +294,7 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
         plt.plot(delta_mu)
         plt.savefig( output_dir + fig_name + '.png' ) 
         plt.close()
-      '''
+      
 
   if CV:
     mu_removed = mu[removed_nodes]

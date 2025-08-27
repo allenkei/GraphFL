@@ -25,8 +25,8 @@ def parse_args():
   parser.add_argument('--num_communities', default=3)
   parser.add_argument('--dim_z', default=10)
   parser.add_argument('--T', default=100)
-  parser.add_argument('--edge_prob_intra', default=0.20)
-  parser.add_argument('--edge_prob_inter', default=0.10)
+  parser.add_argument('--edge_prob_intra', default=0.30)
+  parser.add_argument('--edge_prob_inter', default=0.15)
   
   return parser.parse_args()
 
@@ -36,46 +36,53 @@ args = parse_args()
 
 
 if args.num_nodes == 120:
-  community_sizes = [40,40,40] 
+  community_sizes = [30,40,50] 
 elif args.num_nodes == 210:
-  community_sizes = [70,70,70] 
+  community_sizes = [60,70,80] 
 
 
 
 
 
-def generate_time_series(labels, T=100, sigma=0.25):
-    """
-    Parameters:
-        labels (list or 1D tensor): Cluster label for each node (length n)
-        T (int): Length of each time series
-        sigma (float): Standard deviation of white noise
+def generate_time_series_ar1_cluster(
+    labels,
+    T=100,
+    rho_by_cluster=None,     
+    mu_by_cluster=None,      
+    sigma_by_cluster=None,   
+    seed=123
+):
 
-    Returns:
-        torch.Tensor: (n, T) tensor of time series
-    """
-    labels = torch.tensor(labels, dtype=torch.long)
+
+    rng = np.random.default_rng(seed)
+    labels = np.asarray(labels, dtype=int)
     n = len(labels)
-    output = torch.empty((n, T))
 
-    # Fixed cluster parameters
-    A_list   = [0.5, 0.6, 0.7]
-    f_list   = [0.8, 1.0, 1.2]
-    phi_list = [0.1, 0.2, 0.3]
+    if rho_by_cluster is None:
+        rho_by_cluster = [0.5, 0.5, 0.5, 0.5]
+    if mu_by_cluster is None:
+        mu_by_cluster = [0.0, 1.0, -1.0, 2.0]
+    if sigma_by_cluster is None:
+        sigma_by_cluster = [1.0, 1.0, 1.0, 1.0]
 
-    time = torch.linspace(0, 2 * torch.pi, T)
-
-    cluster_ts = []
-    for A, f, phi in zip(A_list, f_list, phi_list):
-        mu = A * torch.sin(f * time + phi)
-        cluster_ts.append(mu)
-
+    out = torch.empty((n, T), dtype=torch.float32)
     for i in range(n):
-        c = labels[i]
-        noise = sigma * torch.randn(T)
-        output[i] = cluster_ts[c] + noise
+        g = labels[i]
+        rho   = float(rho_by_cluster[g])
+        mu    = float(mu_by_cluster[g])
+        sigma = float(sigma_by_cluster[g])
 
-    return output
+        var0 = sigma**2 / max(1e-8, (1.0 - rho**2))
+        x0 = rng.normal(mu, np.sqrt(var0))
+        eps = rng.normal(0.0, sigma, size=T).astype(np.float32)
+
+        x = np.empty(T, dtype=np.float32)
+        x[0] = x0
+        for t in range(1, T):
+            x[t] = mu + rho * (x[t-1] - mu) + eps[t]
+        out[i] = torch.from_numpy(x)
+
+    return out
 
 
 
@@ -93,7 +100,7 @@ for idx in range(args.num_seq):
     #print(f"[INFO] labels for sequence {idx}:", labels)
 
 
-    y_data = generate_time_series(labels)  # (n, T)
+    y_data = generate_time_series_ar1_cluster(labels)  # (n, T)
 
     graph = nx.Graph()
     graph.add_nodes_from(range(args.num_nodes))
@@ -104,35 +111,15 @@ for idx in range(args.num_seq):
               prob = args.edge_prob_intra
           else:                       
               prob = args.edge_prob_inter
-          if np.random.binomial(1, prob):  # Sample from Bernoulli distribution
+          if np.random.binomial(1, prob):  # Sample from Bernoulli
               graph.add_edge(i, j)
 
     adj_matrix = nx.adjacency_matrix(graph).toarray()
 
-    
-    # Append the results for this sequence
     adj_matrices.append(adj_matrix)
     labels_list.append(labels)
     y_list.append(y_data)
 
-
-
-data_np = y_list[0]  # shape: (n, T)
-data_label = labels_list[0]
-n, T = data_np.shape
-colors = ['red', 'green', 'blue'] 
-
-plt.figure(figsize=(12, 6))
-for i in range(n):
-    plt.plot(range(T), data_np[i], color=colors[data_label[i]], alpha=0.3)
-
-plt.xlabel('Time step (T)')
-plt.ylabel('Value')
-plt.title(f'Line Plot of {n} Time Series')
-plt.grid(True)
-plt.tight_layout()
-plt.savefig("data/data_{}_n{}_plot.pdf".format(args.data_name,args.num_nodes))
-plt.close()
 
 
 adj_matrices = np.array(adj_matrices)

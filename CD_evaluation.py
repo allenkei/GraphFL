@@ -106,9 +106,10 @@ def evaluation_sim(mu, args, seq_iter, node_degrees, adj_matrix, true_labels):
   '''
 
   # Perform K-Means with optimal K
-  print("Optimal number of clusters:", optimal_K)
+  print("[INFO] Optimal number of clusters:", optimal_K)
   kmeans = KMeans(n_clusters=optimal_K, random_state=42, n_init=10)
   pred_labels = kmeans.fit_predict(mu).tolist() # [0,0,0,1,1,1,2,2,2]
+  print("[INFO] predicted label:", pred_labels)
 
   return evaluation(true_labels, pred_labels)
 
