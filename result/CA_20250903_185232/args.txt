@@ -1,0 +1,17 @@
+latent_dim: 3
+output_dim: 168
+num_samples: 1000
+langevin_K: 50
+langevin_s: 0.4
+penalties: [0.1, 0.25, 0.5, 0.75, 1.0]
+epoch: 50
+decoder_iteration: 20
+nu_iteration: 20
+decoder_lr: 0.0001
+decoder_thr: 0.0001
+use_data: CA
+num_node: 58
+hidden_dim: [64, 64]
+data_dir: ./data/CA_data/
+f: None
+output_dir: result/CA_20250903_185232

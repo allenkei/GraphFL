@@ -94,6 +94,17 @@ plot(graph2, vertex.size = 5, vertex.label = NA,
 # Estimated mu #
 ################
 
+
+adj_mat1 <- "data/data_s1_n210.npz"
+adj_mat2 <- "data/data_s2_n196.npz" 
+
+np <- reticulate::import("numpy")
+data1 <- np$load(adj_mat1)
+data2 <- np$load(adj_mat2)
+label1 <- data1['labels'][1,]
+label2 <- data2['labels'][1,]
+rm(data1,data2)
+
 mu_data1 <- read.csv(file.choose(), header = FALSE) # choose the file (s1)
 mu_data2 <- read.csv(file.choose(), header = FALSE) # choose the file (s2)
 colnames(mu_data1) <- colnames(mu_data2) <- c("dim1", "dim2", "dim3")
