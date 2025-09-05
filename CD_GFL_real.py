@@ -27,7 +27,7 @@ torch.cuda.manual_seed(seed)
 def parse_args():
   parser = argparse.ArgumentParser()
 
-  parser.add_argument('--latent_dim', default=10, type=int)
+  parser.add_argument('--latent_dim', default=3, type=int)
   parser.add_argument('--output_dim', default=168, type=int) # num_T
   parser.add_argument('--num_samples', default=1000)
   parser.add_argument('--langevin_K', default=50)
@@ -216,13 +216,14 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes,\
       nn.utils.clip_grad_norm_(model.parameters(),1)
       optimizer.step()
 
-    
+      '''
       # early stopping for decoder
       loss_relative_diff = abs( (loss.item() - inner_loss) / inner_loss )
       inner_loss = loss.item()
       if loss_relative_diff < args.decoder_thr: 
         #print('[INFO] decoder early stopping')
         break
+      '''
 
     ################
     # UPDATE PRIOR # 
@@ -288,21 +289,9 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes,\
       print('\t\tprimal residual =', primal_residual)
       print('\t\tdual residual =', dual_residual)
 
-      
       '''
-      if primal_residual > 10.0 * dual_residual:
-        gamma *= 2.0
-        w *= 0.5
-        print('\n[INFO] gamma increased to', gamma)
-      elif dual_residual > 10.0 * primal_residual:
-        gamma *= 0.5
-        w *= 2.0
-        print('\n[INFO] gamma decreased to', gamma)
-      '''
-
-
       with torch.no_grad():
-        '''
+        
         # second row - first row
         delta_mu = torch.norm(torch.diff(mu, dim=0), p=2, dim=1)
         delta_mu = delta_mu.cpu().detach().numpy() # numpy for plot
@@ -315,7 +304,8 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes,\
         plt.plot(delta_mu)
         plt.savefig( output_dir + fig_name + '.png' ) 
         plt.close()
-        '''
+      '''
+        
   
   plt.plot(loglik_train_holder[1:])
   plt.savefig( output_dir + '/loglik_pen{}'.format(pen_iter) + '.png' ) 
@@ -330,7 +320,7 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes,\
     torch.save(model.state_dict(), output_dir + '/model_weights.pth')
 
     # save mu
-    np.savetxt(output_dir + "/mu_par_pen0.csv", mu.detach().cpu().numpy(), delimiter=",")
+    np.savetxt(output_dir + "/mu_par_pen{}.csv".format(pen_iter), mu.detach().cpu().numpy(), delimiter=",")
     clusters, cluster_label = evaluation_real(mu, args, node_degrees, adj_matrix)
 
     # save cluster for a specific sequence and penalty
@@ -389,6 +379,6 @@ clusters, cluster_label = learn_one_seq_penalty(args, y_data, None, None, source
                             node_degrees, adj_matrix, pen_iter=best_index, CV=False)
 
 
-print('clusters:', clusters)
+print('[INFO] clusters:', clusters)
 cal_map(args, cluster_label, annotate=True, save=True)
 

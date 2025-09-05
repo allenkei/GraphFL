@@ -24,18 +24,18 @@ torch.cuda.manual_seed(seed)
 def parse_args():
   parser = argparse.ArgumentParser()
 
-  parser.add_argument('--latent_dim', default=5, type=int)
+  parser.add_argument('--latent_dim', default=3, type=int)
   parser.add_argument('--output_dim', default=100, type=int)
   parser.add_argument('--num_samples', default=500)
   parser.add_argument('--langevin_K', default=50)
   parser.add_argument('--langevin_s', default=0.4) 
-  parser.add_argument('--penalties', default=[0.1, 0.25, 0.5, 0.75])
+  parser.add_argument('--penalties', default=[0.1, 0.25, 0.5, 0.75, 1.0])
   #parser.add_argument('--gamma', default=10)
   
-  parser.add_argument('--epoch', default=40) # ADMM iteration
+  parser.add_argument('--epoch', default=50) # ADMM iteration
   parser.add_argument('--decoder_iteration', default=20)
   parser.add_argument('--nu_iteration', default=20)
-  parser.add_argument('--decoder_lr', default=0.001)
+  parser.add_argument('--decoder_lr', default=0.0001)
   parser.add_argument('--decoder_thr', default=0.0001)
 
   parser.add_argument('--use_data', default='s1') 
@@ -158,6 +158,7 @@ class CD_temp(nn.Module):
 
 def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
     source_nodes, target_nodes, node_degrees, adj_matrix, seq_iter, pen_iter, CV):
+  torch.manual_seed(42)
 
   n = args.num_node
   m = args.num_samples
@@ -279,21 +280,19 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
       print('\t\tprimal residual =', primal_residual)
       print('\t\tdual residual =', dual_residual)
 
-
+      '''
       with torch.no_grad():
         # second row - first row
         delta_mu = torch.norm(torch.diff(mu, dim=0), p=2, dim=1)
         delta_mu = delta_mu.cpu().detach().numpy() # numpy for plot
-
         if CV:
           fig_name = '/CV_delta_mu_seq{}_pen{}_learn{}'.format(seq_iter,pen_iter,learn_iter+1)
         else:
           fig_name = '/FINAL_delta_mu_seq{}_pen{}_learn{}'.format(seq_iter,pen_iter,learn_iter+1)
-
-
         plt.plot(delta_mu)
         plt.savefig( output_dir + fig_name + '.png' ) 
         plt.close()
+      '''
       
 
   if CV:
@@ -301,7 +300,10 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
     log_lik = model.cal_loglik(mu_removed, removed_y_data)
     return log_lik
   else:
-    torch.save(mu, os.path.join(output_dir, 'mu_par_seq{}_pen{}.pt'.format(seq_iter, pen_iter)) )
+    #torch.save(mu, os.path.join(output_dir, 'mu_par_seq{}_pen{}.pt'.format(seq_iter, pen_iter)) )
+    np.savetxt(
+        os.path.join(output_dir, 'mu_par_seq{}_pen{}.csv'.format(seq_iter, pen_iter)),
+        mu.cpu().numpy(), delimiter=',')
     clusters, NMI, ARI, ACC, HOM, COM, PUR= evaluation_sim(mu, args, seq_iter, node_degrees, adj_matrix, labels)
 
     # save here for a specific sequence and penalty

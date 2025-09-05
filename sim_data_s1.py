@@ -20,7 +20,7 @@ def parse_args():
   parser = argparse.ArgumentParser()
   
   parser.add_argument('--data_name', default="s1")
-  parser.add_argument('--num_seq', default=5, type=int)
+  parser.add_argument('--num_seq', default=50, type=int)
   parser.add_argument('--num_nodes', default=120, type=int)
   parser.add_argument('--num_communities', default=3)
   parser.add_argument('--dim_z', default=10)
@@ -44,26 +44,15 @@ elif args.num_nodes == 210:
 
 
 
-def generate_time_series_ar1_cluster(
-    labels,
-    T=100,
-    rho_by_cluster=None,     
-    mu_by_cluster=None,      
-    sigma_by_cluster=None,   
-    seed=123
-):
-
+def generate_time_series_ar1_cluster(labels,seed,T=100):
 
     rng = np.random.default_rng(seed)
     labels = np.asarray(labels, dtype=int)
     n = len(labels)
 
-    if rho_by_cluster is None:
-        rho_by_cluster = [0.5, 0.5, 0.5, 0.5]
-    if mu_by_cluster is None:
-        mu_by_cluster = [0.0, 1.0, -1.0, 2.0]
-    if sigma_by_cluster is None:
-        sigma_by_cluster = [1.0, 1.0, 1.0, 1.0]
+    rho_by_cluster = [0.5, 0.5, 0.5, 0.5]
+    mu_by_cluster = [-1.0, 0.0, 1.0, 2.0]
+    sigma_by_cluster = [1.0, 1.0, 1.0, 1.0]
 
     out = torch.empty((n, T), dtype=torch.float32)
     for i in range(n):
@@ -96,11 +85,7 @@ y_list = []
 for idx in range(args.num_seq):
 
     labels = np.concatenate([[i] * size for i, size in enumerate(community_sizes)])
-    #print("[INFO] community:", community_sizes)
-    #print(f"[INFO] labels for sequence {idx}:", labels)
-
-
-    y_data = generate_time_series_ar1_cluster(labels)  # (n, T)
+    y_data = generate_time_series_ar1_cluster(labels, seed = 42+idx*2)  # (n, T)
 
     graph = nx.Graph()
     graph.add_nodes_from(range(args.num_nodes))

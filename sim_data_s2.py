@@ -52,29 +52,15 @@ elif args.grid_size == 14:
 
 
 
-def generate_time_series_ar1_cluster(
-    labels,
-    T=100,
-    rho_by_cluster=None,     
-    mu_by_cluster=None,      
-    sigma_by_cluster=None,   
-    seed=0
-):
-    
-    import numpy as np
-    import torch
+def generate_time_series_ar1_cluster(labels,seed,T=100):
 
     rng = np.random.default_rng(seed)
     labels = np.asarray(labels, dtype=int)
     n = len(labels)
 
-    # defaults (tune to control difficulty)
-    if rho_by_cluster is None:
-        rho_by_cluster = [0.5, 0.5, 0.5, 0.5]
-    if mu_by_cluster is None:
-        mu_by_cluster = [0.0, 1.0, -1.0, 2.0]
-    if sigma_by_cluster is None:
-        sigma_by_cluster = [1.0, 1.0, 1.0, 1.0]
+    rho_by_cluster = [0.5, 0.5, 0.5, 0.5]
+    mu_by_cluster = [-0.8, 0.0, 0.8, 1.6]
+    sigma_by_cluster = [1.0, 1.0, 1.0, 1.0]
 
     out = torch.empty((n, T), dtype=torch.float32)
     for i in range(n):
@@ -99,6 +85,7 @@ def generate_time_series_ar1_cluster(
 
 
 
+
 np.random.seed(42)
 adj_matrices = []
 labels_list = []
@@ -107,13 +94,12 @@ y_list = []
 
 for idx in range(args.num_seq):
 
-
     grid_size = args.grid_size
     num_nodes = grid_size * grid_size
 
     grid_graph = nx.grid_2d_graph(grid_size, grid_size)
     node_list = list(grid_graph.nodes())  # List of (row, col) tuples
-    node_index = {node: i for i, node in enumerate(node_list)}  # Mapping (row, col) -> index
+    node_index = {node: i for i, node in enumerate(node_list)}  # Mapping (row, col) to index
 
     labels = np.full(num_nodes, -1, dtype=int)
     for i, (row, col) in enumerate(node_list):
@@ -124,60 +110,12 @@ for idx in range(args.num_seq):
 
 
     adj_matrix = nx.adjacency_matrix(grid_graph).toarray()
-    y_data = generate_time_series_ar1_cluster(labels)  # (n, T)
+    y_data = generate_time_series_ar1_cluster(labels, seed = 42+idx*2)  # (n, T)
 
 
-    
-    # Append the results for this sequence
     adj_matrices.append(adj_matrix)
     labels_list.append(labels)
     y_list.append(y_data)
-
-
-
-'''
-data_np = y_list[0]  # shape: (n, T)
-data_label = labels_list[0]
-n, T = data_np.shape
-tableau = plt.get_cmap("tab10")
-colors = [tableau(i) for i in range(4)] # 4 community
-
-plt.figure(figsize=(12, 6))
-for i in range(n):
-    plt.plot(range(T), data_np[i], color=colors[data_label[i]], alpha=0.3)
-
-plt.xlabel('Time step (T)')
-plt.ylabel('Value')
-plt.title(f'Line Plot of {n} Time Series')
-plt.grid(True)
-plt.tight_layout()
-plt.savefig("data/data_{}_n{}_plot.pdf".format(args.data_name,args.grid_size**2))
-plt.close()
-
-
-G = nx.grid_2d_graph(grid_size, grid_size)
-pos = {(row, col): (col, -row) for row, col in G.nodes()}
-node_list = list(G.nodes())
-tableau = plt.get_cmap("tab10")
-palette = [tableau(i) for i in range(4)]
-node_colors = [palette[labels[i]] for i, _ in enumerate(G.nodes())]
-
-plt.figure(figsize=(6,6))
-nx.draw(
-    G,
-    pos=pos,
-    node_color=node_colors,
-    node_size=50,
-    cmap=plt.cm.Set1,
-    edge_color="lightgray",
-    width=0.5
-)
-plt.title("Grid graph with 4 clusters")
-plt.tight_layout()
-plt.savefig("data/graph_{}_n{}_plot.pdf".format(args.data_name,args.grid_size**2))
-plt.close()
-'''
-
 
 
 
