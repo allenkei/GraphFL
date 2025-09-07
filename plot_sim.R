@@ -5,8 +5,8 @@ library(patchwork)
 np <- reticulate::import("numpy")
 
 
-adj_mat1 <- "data/data_s1_n120.npz"
-adj_mat2 <- "data/data_s2_n144.npz" 
+adj_mat1 <- "data/data_s1_n210.npz"
+adj_mat2 <- "data/data_s2_n196.npz" 
 
 
 data1 <- np$load(adj_mat1)
@@ -15,70 +15,78 @@ adj_mat1 <- data1['adj_matrices'][1,,]
 adj_mat2 <- data2['adj_matrices'][1,,]
 label1 <- data1['labels'][1,]
 label2 <- data2['labels'][1,]
-rm(data1,data2)
+ts1 <- data1['y'][1,,]
+ts2 <- data2['y'][1,,]
+rm(data1,data2) #dim(adj_mat1); dim(adj_mat2)
 
-#dim(adj_mat1); dim(adj_mat2)
-
-
+community_colors1 <- c("deepskyblue", "orange", "green")  
+mean_ts1 <- sapply(unique(label1), function(cluster) {
+  cluster_nodes <- which(label1 == cluster)
+  cluster_ts <- ts1[cluster_nodes, ]
+  colMeans(cluster_ts)  # Mean across time points (columns)
+})
+community_colors2 <- c("deepskyblue","green","coral", "orange")
+mean_ts2 <- sapply(unique(label2), function(cluster) {
+  cluster_nodes <- which(label2 == cluster)
+  cluster_ts <- ts2[cluster_nodes, ]
+  colMeans(cluster_ts)  # Mean across time points (columns)
+})
 
 
 ##################
 # Simulated data #
 ##################
 
-
-
-
-
 graph <- graph_from_adjacency_matrix(adj_mat1, mode = "undirected", diag = FALSE)
-
-community_colors <- c("skyblue", "orange", "green")  
-node_colors <- community_colors[as.factor(label1)]
-
-
+node_colors1 <- community_colors1[as.factor(label1)]
 comm_1_nodes <- which(label1 == 0)  
 comm_2_nodes <- which(label1 == 1)  
 comm_3_nodes <- which(label1 == 2)  
 layout <- matrix(NA, nrow = length(label1), ncol = 2)
-layout[comm_1_nodes, ] <- cbind(runif(length(comm_1_nodes), min = -0.2, max = 0.2), # range for x
+layout[comm_1_nodes,] <- cbind(runif(length(comm_1_nodes), min = -0.2, max = 0.2), # range for x
                                 runif(length(comm_1_nodes), min = 0.7, max = 1.2))  # range for y
-
-layout[comm_2_nodes, ] <- cbind(runif(length(comm_2_nodes), min = -0.6, max = -0.2), # range for x
+layout[comm_2_nodes,] <- cbind(runif(length(comm_2_nodes), min = -0.6, max = -0.2), # range for x
                                 runif(length(comm_2_nodes), min = -1.3, max = -0.5)) # range for y
-
-layout[comm_3_nodes, ] <- cbind(runif(length(comm_3_nodes), min = 0.2, max = 0.6),   # range for x
+layout[comm_3_nodes,] <- cbind(runif(length(comm_3_nodes), min = 0.2, max = 0.6),   # range for x
                                 runif(length(comm_3_nodes), min = -1.3, max = -0.5)) # range for y
 
 
-
-
-
 graph2 <- graph_from_adjacency_matrix(adj_mat2, mode = "undirected", diag = FALSE)
-cluster_colors2 <- colorRampPalette(c("deepskyblue","lightgreen","coral", "orange"))(4)
+cluster_colors2 <- colorRampPalette(c("deepskyblue","green","coral", "orange"))(4)
 node_colors2 <- cluster_colors2[as.factor(label2)]
 
 
 
 
-# 10 by 5
-par(mfrow=c(1,2), mar = c(1,1,1,1))
-set.seed(123) # needed for node location in figures
+# 9 by 5
+layout(matrix(c(1, 2, 3, 4), nrow = 2, ncol = 2, byrow = TRUE), widths = c(1, 2), heights = c(1, 1))
+
+# FIG 1
+par(mar = c(1, 1, 1, 1)); set.seed(123)
 plot(graph, 
-     vertex.size = 5, vertex.label = NA, vertex.color = node_colors,  
-     layout = layout, edge.color = "lightgray",  
+     vertex.size = 5, vertex.label = NA, vertex.color = node_colors1, vertex.frame.color = NA,
+     layout = layout, edge.color = "lightgray", edge.width = 0.2,
      main = "Block Graph with 3 Clusters",
-     xlim = c(-1, 1),        
-     ylim = c(-1, 1)) 
+     xlim = c(-1, 1), ylim = c(-1, 1)) 
 
+# FIG 2
+par(mar = c(4, 4, 2, 1))
+plot(mean_ts1[, 1], type = 'l', col = community_colors1[1], 
+     main = "Mean Time Series by Cluster", xlab = "Timepoint", ylab = "Mean Value", 
+     ylim = c(-2, 2), lwd = 2)
+for (i in 2:length(unique(label1))) lines(mean_ts1[, i], col = community_colors1[i], lwd = 2)
 
-plot(graph2, vertex.size = 5, vertex.label = NA, 
-     vertex.color = node_colors2,
-     main = "Grid Graph with 4 Clusters")
+# FIG 3
+par(mar = c(1, 1, 1, 1))
+plot(graph2, vertex.size = 5, vertex.label = NA, vertex.frame.color = NA,
+     vertex.color = node_colors2, main = "Grid Graph with 4 Clusters")
 
-
-
-
-
+# FIG 4
+par(mar = c(4, 4, 2, 1))
+plot(mean_ts2[, 1], type = 'l', col = community_colors2[1], 
+     main = "Mean Time Series by Cluster", xlab = "Timepoint", ylab = "Mean Value", 
+     ylim = c(-1.5, 2.5), lwd = 2)
+for (i in 2:length(unique(label2))) lines(mean_ts2[, i], col = community_colors2[i], lwd = 2)
 
 
 #par(mfrow=c(1,2), mar = c(2,2,2,2)) # adjacency matrix
@@ -88,7 +96,6 @@ plot(graph2, vertex.size = 5, vertex.label = NA,
 #image(adj_mat2, xaxt = "n", yaxt = "n", main = "Grid Graph with 4 Clusters")
 #axis(side=1,at=seq(0,1,length.out = 4),labels=c(1,48,96,144),xpd=NA,cex.axis=1)
 #axis(side=2,at=seq(0,1,length.out = 4),labels=c(1,48,96,144),xpd=NA,cex.axis=1)
-
 
 ################
 # Estimated mu #
@@ -108,8 +115,6 @@ rm(data1,data2)
 mu_data1 <- read.csv(file.choose(), header = FALSE) # choose the file (s1)
 mu_data2 <- read.csv(file.choose(), header = FALSE) # choose the file (s2)
 colnames(mu_data1) <- colnames(mu_data2) <- c("dim1", "dim2", "dim3")
-
-
 mu_data1$label1 <- as.factor(label1); mu_data2$label2 <- as.factor(label2)
 
 
@@ -145,6 +150,7 @@ p2_yz <- ggplot(mu_data2, aes(x = dim2, y = dim3, color = label2)) +
   geom_point(alpha = 0.8, size = 1.8) +
   base_theme + labs(x = "dim2", y = "dim3")
 
+# 9 by 6
 (p1_xy | p1_xz | p1_yz) / (p2_xy | p2_xz | p2_yz)
 
 
