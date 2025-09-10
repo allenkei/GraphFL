@@ -51,33 +51,62 @@ p_map <- ggplot(ca_map) +
 # 3D latent space visualization #
 #################################
 
-base_theme <- theme_minimal(base_size = 12) +
-  theme(
-    panel.grid.minor = element_blank(),
-    plot.title = element_blank(),
-    legend.position = "none"
-  )
+
+par(mfrow=c(1,3),mar=c(1/2,1/2,1/2,1/2))
+scatter3D(
+  x = CA_mu$dim1, y = CA_mu$dim2, z = CA_mu$dim3,
+  colvar = as.numeric(CA_mu$label), col = cluster_colors,
+  pch = 19, cex = 1, alpha = 0.8,
+  xlab = "dim1", ylab = "dim2", zlab = "dim3",
+  theta = 20, phi = 30,   # viewing angle
+  bty = "g", ticktype = "detailed", colkey = FALSE
+)
+scatter3D(
+  x = CA_mu$dim1, y = CA_mu$dim2, z = CA_mu$dim3,
+  colvar = as.numeric(CA_mu$label), col = cluster_colors,
+  pch = 19, cex = 1, alpha = 0.8,
+  xlab = "dim1", ylab = "dim2", zlab = "dim3",
+  theta = 60, phi = 40,   # viewing angle
+  bty = "g", ticktype = "detailed", colkey = FALSE
+)
+scatter3D(
+  x = CA_mu$dim1, y = CA_mu$dim2, z = CA_mu$dim3,
+  colvar = as.numeric(CA_mu$label), col = cluster_colors,
+  pch = 19, cex = 1, alpha = 0.8,
+  xlab = "dim1", ylab = "dim2", zlab = "dim3",
+  theta = 50, phi = 60,   # viewing angle
+  bty = "g", ticktype = "detailed", colkey = FALSE
+)
 
 
-p1_xy <- ggplot(CA_mu, aes(x = dim1, y = dim2, color = label)) +
-  geom_point(alpha = 0.8, size = 1.8) +
-  scale_color_manual(values = cluster_colors) +
-  base_theme + labs(x = "dim1", y = "dim2")
 
-
-p1_xz <- ggplot(CA_mu, aes(x = dim1, y = dim3, color = label)) +
-  geom_point(alpha = 0.8, size = 1.8) +
-  scale_color_manual(values = cluster_colors) +
-  base_theme + labs(x = "dim1", y = "dim3")
-
-
-p1_yz <- ggplot(CA_mu, aes(x = dim2, y = dim3, color = label)) +
-  geom_point(alpha = 0.8, size = 1.8) +
-  scale_color_manual(values = cluster_colors) +
-  base_theme + labs(x = "dim2", y = "dim3")
-
-
-(p1_xy | p1_xz | p1_yz) 
+# base_theme <- theme_minimal(base_size = 12) +
+#   theme(
+#     panel.grid.minor = element_blank(),
+#     plot.title = element_blank(),
+#     legend.position = "none"
+#   )
+# 
+# 
+# p1_xy <- ggplot(CA_mu, aes(x = dim1, y = dim2, color = label)) +
+#   geom_point(alpha = 0.8, size = 1.8) +
+#   scale_color_manual(values = cluster_colors) +
+#   base_theme + labs(x = "dim1", y = "dim2")
+# 
+# 
+# p1_xz <- ggplot(CA_mu, aes(x = dim1, y = dim3, color = label)) +
+#   geom_point(alpha = 0.8, size = 1.8) +
+#   scale_color_manual(values = cluster_colors) +
+#   base_theme + labs(x = "dim1", y = "dim3")
+# 
+# 
+# p1_yz <- ggplot(CA_mu, aes(x = dim2, y = dim3, color = label)) +
+#   geom_point(alpha = 0.8, size = 1.8) +
+#   scale_color_manual(values = cluster_colors) +
+#   base_theme + labs(x = "dim2", y = "dim3")
+# 
+# 
+# (p1_xy | p1_xz | p1_yz) 
 
 ######################
 # CA map from kmeans #
