@@ -25,7 +25,7 @@ ts3 <- data3['y'][1,,]
 rm(data1,data2,data3) #dim(adj_mat1); dim(adj_mat2); dim(adj_mat3)
 
 community_colors1 <- c("deepskyblue", "green", "orange")  
-community_colors2 <- c("deepskyblue", "green", "coral", "orange")
+community_colors2 <- c("deepskyblue", "green", "red", "orange")
 community_colors3 <- c("deepskyblue", "green", "orange")  
 
 #########
@@ -55,11 +55,11 @@ plot(graph,
      main = "Block Graph with 3 Clusters",
      xlim = c(-1, 1), ylim = c(-1, 1)) 
 
-par(mar = c(4, 4, 2, 1))
+par(mar = c(4, 4, 2, 1), cex.axis = 0.8)
 clusters1 <- sort(unique(label1)); Tn <- ncol(ts1); use_sem <- FALSE
 
 plot(NA, xlim = c(1, Tn), ylim = range(-3,3),# axes = FALSE,
-     xlab = "Timepoint", ylab = "Value", main = "Time Series Means ± SD")
+     xlab = "Time point", ylab = "Value", main = "Time Series Means ± SD")
 #axis(1); axis(2, at = c(-3, -1, 1, 3))
 for (i in seq_along(clusters1)) {
   k <- clusters1[i]
@@ -78,21 +78,21 @@ for (i in seq_along(clusters1)) {
 # 10 by 3.5
 
 graph2 <- graph_from_adjacency_matrix(adj_mat2, mode = "undirected", diag = FALSE)
-cluster_colors2 <- colorRampPalette(c("deepskyblue","green","coral", "orange"))(4)
+cluster_colors2 <- colorRampPalette(c("deepskyblue","green","red", "orange"))(4)
 node_colors2 <- cluster_colors2[as.factor(label2)]
 
 layout(matrix(c(1, 2), nrow = 1, ncol = 2, byrow = TRUE), widths = c(1, 2), heights = c(1, 1))
 
 
-par(mar = c(1, 1, 1, 1))
+par(mar = c(1, 1, 1, 1)); set.seed(123)
 plot(graph2, vertex.size = 5, vertex.label = NA, vertex.frame.color = NA,
      vertex.color = node_colors2, main = "Grid Graph with 4 Clusters")
 
-par(mar = c(4, 4, 2, 1))
+par(mar = c(4, 4, 2, 1), cex.axis = 0.8)
 clusters2 <- sort(unique(label2)); Tn <- ncol(ts2); use_sem <- FALSE
 
 plot(NA, xlim = c(1, Tn), ylim = range(-3,3.5), #axes = FALSE,
-     xlab = "Timepoint", ylab = "Value", main = "Time Series Means ± SD")
+     xlab = "Time point", ylab = "Value", main = "Time Series Means ± SD")
 #axis(1); axis(2, at = c(-3, -1, 1, 3))
 for (i in seq_along(clusters2)) {
   k <- clusters2[i]
@@ -133,11 +133,11 @@ plot(graph3,
      main = "Block Graph with 3 Clusters",
      xlim = c(-1, 1), ylim = c(-1, 1)) 
 
-par(mar = c(4, 4, 2, 1))
+par(mar = c(4, 4, 2, 1), cex.axis = 0.8)
 clusters3 <- sort(unique(label3)); Tn <- ncol(ts3); use_sem <- FALSE
 
 plot(NA, xlim = c(1, Tn), ylim = range(-4,4),# axes = FALSE,
-     xlab = "Timepoint", ylab = "Value", main = "Time Series Means ± SD")
+     xlab = "Time point", ylab = "Value", main = "Time Series Means ± SD")
 #axis(1); axis(2, at = c(-3, -1, 1, 3))
 for (i in seq_along(clusters3)) {
   k <- clusters3[i]
