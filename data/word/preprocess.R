@@ -1,8 +1,8 @@
 library(readr)
-nodes <- read_csv("~/Downloads/network/nodes.csv")
-edges <- read_csv("~/Downloads/network/edges.csv")
+nodes <- read_csv("data/word/nodes.csv")
+edges <- read_csv("data/word/edges.csv")
 
-n_chunks <- 100 # length of time
+n_chunks <- 64 # length of time
 g <- graph_from_data_frame(d = edges, vertices = nodes, directed = FALSE)
 A <- as_adjacency_matrix(g, sparse = FALSE) # 112 by 112
 colnames(A) <- rownames(A) <- nodes$label
@@ -12,7 +12,7 @@ colnames(A) <- rownames(A) <- nodes$label
 
 library(tidyverse)
 
-file_name <- "~/Downloads/network/david_copperfield.txt" # david_copperfield.txt
+file_name <- file.choose() # david_copperfield.txt
 
 book_text <- tolower(readChar(file_name, file.info(file_name)$size))
 
@@ -43,8 +43,8 @@ word_zscore <- t(scale(t(word_series)))  # row-wise scaling
 # Visualization #
 #################
 
-nodes <- read_csv("~/Downloads/network/nodes.csv")
-edges <- read_csv("~/Downloads/network/edges.csv")
+nodes <- read_csv("data/word/nodes.csv")
+edges <- read_csv("data/word/edges.csv")
 word_cluster <- readLines(file.choose()) # GFL cluster result
 
 node_labels <- rep(0, 112) # there are 112 words
@@ -61,8 +61,7 @@ cluster_colors <- c(
   "1" = "deepskyblue",
   "2" = "orange",
   "3" = "red",
-  "4" = "firebrick",
-  "5" = "darkred")
+  "4" = "darkred")
 
 v_cols <- cluster_colors[as.character(V(g)$name)]
 v_shapes <- ifelse(nodes$value == 1, "circle", "square")
@@ -83,15 +82,10 @@ plot(
   vertex.label = NA,
   edge.color = "grey70",
   edge.width = 1,
-  rescale = TRUE,         # use full plot area
-  #asp = 0.5,                # allow stretching in both x/y
   #main = "Noun & Adjective Network"
 )
 
 
-
-
-# Place shape legend top right
 legend(
   "topright",
   legend = c("Noun", "Adjective"),
@@ -100,13 +94,13 @@ legend(
   pt.cex = 1.5,
   bty = "n",
   title = "Shape & Color",
-  inset = c(0.0, 0.1)    # lower inset → below the first legend
+  inset = c(0.01, 0.0)    
 )
 
 legend(
   "topright",
-  legend = paste("Cluster", 1:5),
-  text.col = cluster_colors,   # text colored by cluster
+  legend = paste("Cluster", 1:length(unique(node_labels))),
+  text.col = cluster_colors,
   bty = "n", 
-  inset = c(0.03, 0.2)
+  inset = c(0.05, 0.1)
 )

@@ -80,33 +80,33 @@ scatter3D(
 
 
 
-# base_theme <- theme_minimal(base_size = 12) +
-#   theme(
-#     panel.grid.minor = element_blank(),
-#     plot.title = element_blank(),
-#     legend.position = "none"
-#   )
-# 
-# 
-# p1_xy <- ggplot(CA_mu, aes(x = dim1, y = dim2, color = label)) +
-#   geom_point(alpha = 0.8, size = 1.8) +
-#   scale_color_manual(values = cluster_colors) +
-#   base_theme + labs(x = "dim1", y = "dim2")
-# 
-# 
-# p1_xz <- ggplot(CA_mu, aes(x = dim1, y = dim3, color = label)) +
-#   geom_point(alpha = 0.8, size = 1.8) +
-#   scale_color_manual(values = cluster_colors) +
-#   base_theme + labs(x = "dim1", y = "dim3")
-# 
-# 
-# p1_yz <- ggplot(CA_mu, aes(x = dim2, y = dim3, color = label)) +
-#   geom_point(alpha = 0.8, size = 1.8) +
-#   scale_color_manual(values = cluster_colors) +
-#   base_theme + labs(x = "dim2", y = "dim3")
-# 
-# 
-# (p1_xy | p1_xz | p1_yz) 
+base_theme <- theme_minimal(base_size = 12) +
+  theme(
+    panel.grid.minor = element_blank(),
+    plot.title = element_blank(),
+    legend.position = "none"
+  )
+
+
+p1_xy <- ggplot(CA_mu, aes(x = dim1, y = dim2, color = label)) +
+  geom_point(alpha = 0.8, size = 1.8) +
+  scale_color_manual(values = cluster_colors) +
+  base_theme + labs(x = "dim1", y = "dim2")
+
+
+p1_xz <- ggplot(CA_mu, aes(x = dim1, y = dim3, color = label)) +
+  geom_point(alpha = 0.8, size = 1.8) +
+  scale_color_manual(values = cluster_colors) +
+  base_theme + labs(x = "dim1", y = "dim3")
+
+
+p1_yz <- ggplot(CA_mu, aes(x = dim2, y = dim3, color = label)) +
+  geom_point(alpha = 0.8, size = 1.8) +
+  scale_color_manual(values = cluster_colors) +
+  base_theme + labs(x = "dim2", y = "dim3")
+
+
+(p1_xy | p1_xz | p1_yz)
 
 ######################
 # CA map from kmeans #

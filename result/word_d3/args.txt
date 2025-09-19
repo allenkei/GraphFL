@@ -1,5 +1,5 @@
 latent_dim: 3
-output_dim: 100
+output_dim: 64
 num_samples: 1000
 langevin_K: 50
 langevin_s: 0.4
@@ -14,4 +14,4 @@ num_node: 112
 hidden_dim: [64, 64]
 data_dir: ./data/word/
 f: None
-output_dir: result/word_20250916_201156
+output_dir: result/word_20250919_051918
