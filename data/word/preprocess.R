@@ -1,3 +1,5 @@
+
+library(tidyverse)
 library(readr)
 nodes <- read_csv("data/word/nodes.csv")
 edges <- read_csv("data/word/edges.csv")
@@ -7,11 +9,7 @@ g <- graph_from_data_frame(d = edges, vertices = nodes, directed = FALSE)
 A <- as_adjacency_matrix(g, sparse = FALSE) # 112 by 112
 colnames(A) <- rownames(A) <- nodes$label
 
-
-
-
-library(tidyverse)
-
+# read txt file
 file_name <- file.choose() # david_copperfield.txt
 
 book_text <- tolower(readChar(file_name, file.info(file_name)$size))
@@ -42,6 +40,7 @@ word_zscore <- t(scale(t(word_series)))  # row-wise scaling
 #################
 # Visualization #
 #################
+# 8 by 7
 
 nodes <- read_csv("data/word/nodes.csv")
 edges <- read_csv("data/word/edges.csv")
@@ -55,6 +54,72 @@ for (i in seq_along(word_cluster)) {
 
 g <- graph_from_data_frame(d = edges, vertices = nodes, directed = FALSE)
 V(g)$name <- as.factor(node_labels)
+
+
+cluster_colors <- c(
+  "1" = "deepskyblue",
+  "2" = "orange",
+  "3" = "red",
+  "4" = "darkred")
+
+v_cols <- cluster_colors[as.character(V(g)$name)]
+v_shapes <- ifelse(nodes$value == 1, "circle", "square")
+
+
+par(mar = c(0.5, 0.5, 0.5, 0.5))  
+
+set.seed(42)
+lo <- layout_with_fr(g) # "fr", "kk", "lgl"
+
+plot(
+  g, layout = lo,
+  vertex.color = v_cols,
+  vertex.shape = v_shapes,
+  vertex.size = 6,
+  vertex.label = NA,
+  edge.color = "grey70",
+  edge.width = 1,
+  #main = "Noun & Adjective Network"
+)
+
+
+legend(
+  "topright",
+  legend = c("Noun", "Adjective"),
+  pch = c(16, 15),    # circle and square
+  col = "grey30",
+  pt.cex = 1.5,
+  bty = "n",
+  title = "Shape & Color",
+  inset = c(0.01, 0.0)    
+)
+
+legend(
+  "topright",
+  legend = paste("Cluster", 1:length(unique(node_labels))),
+  text.col = cluster_colors,
+  bty = "n", 
+  inset = c(0.05, 0.1)
+)
+
+
+###########
+# k-means #
+###########
+# 8 by 7
+
+nodes <- read_csv("data/word/nodes.csv")
+edges <- read_csv("data/word/edges.csv")
+word_zscore <- read_csv("data/word/word_time_series.csv")
+word_zscore <- word_zscore[, -1] # first column is word
+
+set.seed(42) # different seeds, different results
+kmean_result <- kmeans(word_zscore, centers = 4) # K = 4 based on GFL result
+kmean_cluster <- kmean_result$cluster
+
+
+g <- graph_from_data_frame(d = edges, vertices = nodes, directed = FALSE)
+V(g)$name <- as.factor(kmean_cluster)
 
 
 cluster_colors <- c(
@@ -99,8 +164,13 @@ legend(
 
 legend(
   "topright",
-  legend = paste("Cluster", 1:length(unique(node_labels))),
+  legend = paste("Cluster", 1:length(unique(kmean_cluster))),
   text.col = cluster_colors,
   bty = "n", 
   inset = c(0.05, 0.1)
 )
+
+
+
+
+
