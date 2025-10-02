@@ -41,7 +41,7 @@ def parse_args():
   parser.add_argument('--use_data', default='s1') 
   parser.add_argument('--num_node', default=150, type=int)
   parser.add_argument('--hidden_dim', default=[32,32])
-  parser.add_argument('--num_seq', default=10, type=int)
+  parser.add_argument('--num_seq', default=50, type=int)
 
   parser.add_argument('--data_dir', default='./data/')
   parser.add_argument('-f', required=False)
@@ -69,7 +69,7 @@ timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
 print('[INFO] num_node = {}'.format(args.num_node))
 data = np.load(args.data_dir +'data_{}_n{}.npz'.format(args.use_data,args.num_node))
-output_dir = os.path.join("result/{}_n{}".format(args.use_data,args.num_node))
+output_dir = os.path.join("result/{}_n{}_d{}".format(args.use_data,args.num_node,args.latent_dim))
 remove_ratio = 0.1
 
 
@@ -326,8 +326,6 @@ output_holder = torch.zeros(args.num_seq, 6) # NMI, ARI, ACC, HOM, COM, PUR
 
 
 for seq_iter in range(0,args.num_seq):
-
-  #if seq_iter == 3: break
 
   adj_matrix = data['adj_matrices'][seq_iter]
   labels = data['labels'][seq_iter]

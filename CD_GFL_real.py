@@ -69,6 +69,7 @@ timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
 
 if args.use_data == 'CA':
   print('[INFO] num_node = {}'.format(args.num_node))
+  remove_ratio = 0.1 # model selection
   adj_matrix = pd.read_csv(args.data_dir +'CA_graph.csv')
   y_data = pd.read_csv(args.data_dir +'CA_time_series.csv')
   
@@ -77,8 +78,29 @@ if args.use_data == 'CA':
 
   output_dir = os.path.join("result/CA_{}".format(timestamp))
 
+elif args.use_data == 'CA_1895_2024':
+  print('[INFO] num_node = {}'.format(args.num_node))
   remove_ratio = 0.1 # model selection
+  adj_matrix = pd.read_csv(args.data_dir +'CA_graph.csv')
+  y_data = pd.read_csv(args.data_dir +'CA_time_series_1895_2024.csv')
+  
+  adj_matrix = adj_matrix.values # numpy
+  y_data = torch.tensor(y_data.values, dtype=torch.float32) # torch
 
+  output_dir = os.path.join("result/CA_1895_2024_{}".format(timestamp))
+
+elif args.use_data == 'word':
+  print('[INFO] num_node = {}'.format(args.num_node))
+  args.data_dir = './data/word/'
+  remove_ratio = 0.1 # model selection
+  adj_matrix = pd.read_csv(args.data_dir +'word_graph.csv',index_col=0)
+  y_data = pd.read_csv(args.data_dir +'word_time_series.csv',index_col=0)
+
+  adj_matrix = adj_matrix.values # numpy
+  y_data = torch.tensor(y_data.values, dtype=torch.float32) # torch
+
+  output_dir = os.path.join("result/word_{}".format(timestamp))
+  
 
 
 args.output_dir = output_dir
@@ -380,5 +402,7 @@ clusters, cluster_label = learn_one_seq_penalty(args, y_data, None, None, source
 
 
 print('[INFO] clusters:', clusters)
-cal_map(args, cluster_label, annotate=True, save=True)
+
+if args.use_data != 'word':
+  cal_map(args, cluster_label, annotate=True, save=True)
 
