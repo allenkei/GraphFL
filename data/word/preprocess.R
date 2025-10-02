@@ -1,6 +1,7 @@
 
 library(tidyverse)
 library(readr)
+library(igraph)
 nodes <- read_csv("data/word/nodes.csv")
 edges <- read_csv("data/word/edges.csv")
 
@@ -114,7 +115,7 @@ word_zscore <- read_csv("data/word/word_time_series.csv")
 word_zscore <- word_zscore[, -1] # first column is word
 
 set.seed(42) # different seeds, different results
-kmean_result <- kmeans(word_zscore, centers = 4) # K = 4 based on GFL result
+kmean_result <- kmeans(word_zscore, centers = 2) # K = 2 based on adj & noun, K = 4 based on GFL result
 kmean_cluster <- kmean_result$cluster
 
 
@@ -124,9 +125,9 @@ V(g)$name <- as.factor(kmean_cluster)
 
 cluster_colors <- c(
   "1" = "deepskyblue",
-  "2" = "orange",
-  "3" = "red",
-  "4" = "darkred")
+  "2" = "orange")
+  #"3" = "red",
+  #"4" = "darkred")
 
 v_cols <- cluster_colors[as.character(V(g)$name)]
 v_shapes <- ifelse(nodes$value == 1, "circle", "square")
@@ -159,7 +160,7 @@ legend(
   pt.cex = 1.5,
   bty = "n",
   title = "Shape & Color",
-  inset = c(0.01, 0.0)    
+  inset = c(0.05, 0.0)    
 )
 
 legend(
@@ -167,7 +168,7 @@ legend(
   legend = paste("Cluster", 1:length(unique(kmean_cluster))),
   text.col = cluster_colors,
   bty = "n", 
-  inset = c(0.05, 0.1)
+  inset = c(0.09, 0.1)
 )
 
 

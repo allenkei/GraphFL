@@ -149,3 +149,20 @@ p_map <- ggplot(ca_map) +
   );p_map
 
 
+# Select k for k-means
+
+CA_data <- read.csv("data/CA_data/CA_time_series.csv")
+
+silhouette_scores <- function(CA_data, max_k = 10) {
+  scores <- numeric(max_k - 1)
+  for (k in 2:max_k) {  
+    kmeans_result <- kmeans(CA_data, centers = k, nstart = 25)  
+    sil_score <- silhouette(kmeans_result$cluster, dist(CA_data))  
+    scores[k - 1] <- mean(sil_score[, 3])  
+  }
+  return(scores)
+}
+
+set.seed(42)
+sil_scores <- silhouette_scores(CA_data, max_k = 10)
+optimal_k <- which.max(sil_scores) + 1
