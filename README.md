@@ -1,11 +1,12 @@
 # Graph-fused Lasso for Clustering in Networks with Time-varying Nodal Attributes
 
-Yik Lun Kei, Oscar Hernan Madrid Padilla, Rebecca Killick, James D. Wilson, Xi Chen, Robert Lund
+Yik Lun Kei, Oscar Hernan Madrid Padilla, Rebecca Killick, James D. Wilson, Xi Chen, Robert Lund\
+Under Review
 
 ## Overview
-This repository contains code for the **graph-fused Lasso** (GFL) method for clustering in networks with time-varying nodal attributes.
+This repository contains the code of the **graph-fused Lasso** (GFL) method for clustering in networks with time-varying nodal attributes.
 
-Use CP_GFL_demo.ipynb to reproduce the results in paper. 
+The framework includes **prior distributions** for low-dimensional representations and a **decoder** that bridges the latent representations and observed sequences. The graph-fused Lasso regularization is imposed on the prior parameters, and the resulting optimization problem is solved via the **alternating direction method of multipliers** (ADMM).
 
 ## Folder Structure
 
@@ -17,11 +18,13 @@ Use CP_GFL_demo.ipynb to reproduce the results in paper.
 
 ## How to Reproduce the Results
 
+To reproduce the results in the paper, use the Jupyter notebook `CD_GFL_demo.ipynb`.
+
 1. **Simulated Data**  
-   To reproduce the results in the paper, use the Jupyter notebook `CD_GFL_demo.ipynb`. For example, use `sim_data_s1.py` to generate simulated data for Scenario 1, which will be saved to the `data/` folder .
+    For example, use `sim_data_s1.py` to generate simulated data for Scenario 1, which will be saved to the `data/` folder .
 
 2. **Simulation Study**  
-   To apply the GFL method for nodal clustering, use the script `CD_GFL_sim.py`. The output will be saved at the `result/` folder. 
+   To apply the GFL method for nodal clustering, use the script `CD_GFL_sim.py`. The script uses the data saved in the `data/` folder, and the output will be saved at the `result/` folder. 
 
 3. **Real Data Experiments**  
    For read data experiments, run the script `CD_GFL_real.py`. The result will be saved at the `result/` folder. Additionally, the R scripts in the folder of the two data set can be used to reproduce the figures shown in the paper.
