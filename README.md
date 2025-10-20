@@ -24,11 +24,3 @@ Use CP_GFL_demo.ipynb to reproduce the results in paper.
 
 3. **Real Data Experiments**  
    For read data experiments, run the script `CD_GFL_real.py`. The result will be saved at the `result/` folder. Additionally, the R scripts in the folder of the two data set can be used to reproduce the figures shown in the paper.
-
-
-
-In CPD_demo.ipynb, use sim_data_s1 to simulate data for Scenario 1. The simulated data will be saved in the data folder.
-
-Use CD_GFL_sim.py to run the algorithm for nodal clustering. The output will be saved in the result folder.
-
-For real data experiments, use CD_GFL_real.py to reproduce the results and use the R codes in the data folder to reproduce the figures.
