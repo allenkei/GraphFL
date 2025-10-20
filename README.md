@@ -18,7 +18,7 @@ Use CP_GFL_demo.ipynb to reproduce the results in paper.
 ## How to Reproduce the Results
 
 1. **Simulated Data**  
-   To reproduce the results in the paper, use the Jupyter notebook `CD_GFL_demo.ipynb`. For example, use `sim_data_s1.py` to generate simulated data, which will be saved to the `data/` folder .
+   To reproduce the results in the paper, use the Jupyter notebook `CD_GFL_demo.ipynb`. For example, use `sim_data_s1.py` to generate simulated data for Scenario 1, which will be saved to the `data/` folder .
 
 2. **Simulation Study**  
    To apply the GFL method for nodal clustering, use the script `CD_GFL_sim.py`. The output will be saved at the `result/` folder. 
