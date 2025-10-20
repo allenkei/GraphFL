@@ -3,7 +3,7 @@
 Yik Lun Kei, Oscar Hernan Madrid Padilla, Rebecca Killick, James D. Wilson, Xi Chen, Robert Lund
 
 ## Overview
-This repository contains code for the **Graph-fused Lasso** (GFL) method for clustering in networks with time-varying nodal attributes.
+This repository contains code for the **graph-fused Lasso** (GFL) method for clustering in networks with time-varying nodal attributes.
 
 Use CP_GFL_demo.ipynb to reproduce the results in paper. 
 
