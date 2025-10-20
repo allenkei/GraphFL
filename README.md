@@ -13,6 +13,7 @@ Use CP_GFL_demo.ipynb to reproduce the results in paper.
 - `CD_GFL_real.py`: Python script to run the algorithm on real-world data.
 - `data/`: Contains the simulated data, real data, and R scripts for figure generation.
 - `result/`: Output folder for the results of the algorithm.
+- `competitor/`: Contains the scripts and results from the competitor methods.
 
 ## How to Reproduce the Results
 
