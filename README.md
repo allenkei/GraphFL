@@ -21,7 +21,7 @@ The framework includes **prior distributions** for low-dimensional representatio
 To reproduce the results in the paper, use the Jupyter notebook `CD_GFL_demo.ipynb`.
 
 1. **Simulated Data**  
-    For example, use `sim_data_s1.py` to generate simulated data for Scenario 1, which will be saved to the `data/` folder .
+    The data for the simulation study is already generated and existed in the `data/` folder. If needed, for example, use `sim_data_s1.py` to generate the simulated data for Scenario 1, which will be saved to the `data/` folder. 
 
 2. **Simulation Study**  
    To apply the GFL method for nodal clustering, use the script `CD_GFL_sim.py`. The script uses the data saved in the `data/` folder, and the output will be saved at the `result/` folder. 
