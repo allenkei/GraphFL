@@ -1,4 +1,4 @@
-# Graph-fused Lasso for Clustering in Networks with Time-varying Nodal Attributes
+# Clustering in Networks with Time-varying Nodal Attributes
 
 Yik Lun Kei, Oscar Hernan Madrid Padilla, Rebecca Killick, James D. Wilson, Xi Chen, Robert Lund\
 Under Review
