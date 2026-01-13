@@ -248,14 +248,12 @@ def learn_one_seq_penalty(args, y_data, removed_y_data, removed_nodes, labels,\
     # UPDATE NU # 
     #############
 
-    for nu_iter in range(args.nu_iteration):
-
-      s_ij = mu[source_nodes] - mu[target_nodes] + w     # Shape: (E, d)
-      s_ij_norm = torch.norm(s_ij, dim=1, keepdim=True)  # Shape: (E, 1)
-      scaling_factor = 1 - (penalty / (gamma * s_ij_norm))
-      scaling_factor = torch.clamp(scaling_factor, min=0.0)  # ReLU: max(0,x)
-      nu = scaling_factor * s_ij
-      nu = nu.detach().clone()
+    s_ij = mu[source_nodes] - mu[target_nodes] + w     # Shape: (E, d)
+    s_ij_norm = torch.norm(s_ij, dim=1, keepdim=True)  # Shape: (E, 1)
+    scaling_factor = 1 - (penalty / (gamma * s_ij_norm))
+    scaling_factor = torch.clamp(scaling_factor, min=0.0)  # ReLU: max(0,x)
+    nu = scaling_factor * s_ij
+    nu = nu.detach().clone()
 
     ############
     # UPDATE W # 
