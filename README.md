@@ -1,6 +1,6 @@
-# Clustering in Networks with Time-varying Nodal Attributes
+# Decoder-only Clustering in Graphs with Dynamic Attributes
 
-Yik Lun Kei, Oscar Hernan Madrid Padilla, Rebecca Killick, James D. Wilson, Xi Chen, Robert Lund\
+Yik Lun Kei, Oscar Hernan Madrid Padilla, Rebecca Killick, James D. Wilson, Xi Chen, Robert B. Lund\
 Under Review
 
 ## Overview
