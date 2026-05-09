@@ -1,4 +1,4 @@
-# Decoder-only Clustering in Graphs with Dynamic Attributes
+# Decoder-only Clustering in Attributed Graphs
 
 Yik Lun Kei, Oscar Hernan Madrid Padilla, Rebecca Killick, James D. Wilson, Xi Chen, Robert B. Lund\
 Under Review
