@@ -1,6 +1,7 @@
 # Decoder-only Clustering in Attributed Graphs
 
 Yik Lun Kei, Oscar Hernan Madrid Padilla, Rebecca Killick, James D. Wilson, Xi Chen, Robert B. Lund\
+[PDF](https://arxiv.org/pdf/2511.04859)\
 Under Review
 
 ## Overview
